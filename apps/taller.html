@@ -1,0 +1,1975 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<title>Panel de Taller · Mi Taller · v19</title>
+<!-- theme-color matchea al header (bg-panel) — así la barra de estado del
+     iPhone no se ve "esfumada" contra el header por atrás. -->
+<meta name="theme-color" content="#222627">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<style>
+  :root{
+    --bg:#191c1d; --bg-panel:#222627; --bg-raised:#2b3031;
+    --text:#EDEAE0; --text-dim:#9AA0A0;
+    --accent:#FB5A24; --accent-2:#5C9098; --accent-hover:#FF6500;
+    --danger:#D6553F; --ok:#5CB85C; --warn:#F0AD4E;
+    --border:#3a3f40; --radius:10px;
+    /* Alias "estética taller/concesionario" (metal grafito + acero + naranja)
+       sobre las variables de siempre — no se renombra nada existente, solo
+       se agregan nombres equivalentes para los gradientes metálicos nuevos. */
+    --bg-soft:#333a3d;
+    --steel-dark:#454d50; --steel:#aeb5b7; --steel-light:#e2e6e7;
+    --ves-orange:var(--accent); --ves-orange-hot:var(--accent-hover);
+    --success:var(--ok); --warning:var(--warn);
+  }
+  *{box-sizing:border-box;}
+
+  /* ---------- sistema de iconos SVG ---------- */
+  /* Reemplaza todos los emojis de la UI. Los iconos se generan con uiIcon()
+     (ver JS, al comienzo del bloque de script principal) o se hidratan en
+     elementos data-icon="nombre" via hydrateIcons(). .metal-icon da el contenedor
+     "pieza de instrumental" (disco grafito + borde metálico); .nav-icon y
+     .action-icon fijan el tamaño del contenedor según el contexto;
+     .inline-icon es el tamaño chico que va metido en una línea de texto. */
+  .ui-icon{ display:block; }
+  .metal-icon{
+    background:radial-gradient(circle at 32% 24%, #3a4245 0%, #202628 55%, #121617 100%);
+    border:1px solid rgba(220,230,232,.20);
+    box-shadow:inset 0 1px 1px rgba(255,255,255,.12), inset 0 -1px 2px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
+    color:var(--steel-light);
+  }
+  .nav-icon{
+    width:44px; height:44px; border-radius:12px; flex:none; margin-bottom:2px;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .nav-icon .ui-icon{ width:27px; height:27px; }
+  .action-icon{
+    width:34px; height:34px; border-radius:8px; flex:none;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .action-icon .ui-icon{ width:18px; height:18px; }
+  .inline-icon{ width:14px; height:14px; vertical-align:-2px; display:inline-block; flex:none; }
+  /* Tab activo (naranja): icono grafito oscuro, no el gris acero de los inactivos. */
+  nav .tab-btn.active .nav-icon{
+    background:var(--ves-orange); color:#1b1b1b; border-color:rgba(0,0,0,.25);
+    box-shadow:0 0 0 3px rgba(251,90,36,.25), inset 0 1px 1px rgba(255,255,255,.3), inset 0 -1px 2px rgba(0,0,0,.3);
+  }
+  html{background:var(--bg-panel);}
+  body{margin:0; padding:0; background:var(--bg); color:var(--text); font-family:'Work Sans',system-ui,sans-serif;}
+  /* Overlay sólido a z:200 que tapa la zona del notch para que el translúcido
+     del status bar iOS jamás filtre sobre la primera línea del header. */
+  body::before{
+    content:''; position:fixed; top:0; left:0; right:0;
+    height:env(safe-area-inset-top, 0px);
+    background:var(--bg-panel); z-index:200; pointer-events:none;
+  }
+  a{color:var(--accent-2);}
+
+  /* ---------- header ---------- */
+  /* Mismo esquema que index.html (Ficha de Ingreso): header sticky arriba en
+     mobile, menú lateral fijo en desktop (>=820px) — así Taller ya no se ve
+     como un panel aparte, es el mismo "shell" con otra sección activa. */
+  header{
+    background:linear-gradient(180deg, #262c2e 0%, var(--bg-panel) 100%);
+    border-bottom:1px solid rgba(255,255,255,.06);
+    padding:calc(32px + env(safe-area-inset-top, 0px)) 16px 0 16px;
+    position:sticky; top:0; z-index:20;
+  }
+  .brand{display:flex; align-items:baseline; gap:8px; margin-bottom:14px;}
+  .brand .tag{background:var(--accent); color:#1b1b1b; font-weight:700; font-size:11px; padding:2px 6px; border-radius:4px; font-family:'Space Mono',monospace; letter-spacing:.04em;}
+  .brand h1{font-size:16px; margin:0; font-weight:600;}
+  .brand .ver{
+    display:inline-block; font-size:10px; font-weight:700; font-family:'Space Mono',monospace;
+    color:var(--accent-2); background:rgba(92,144,152,.12); border:1px solid rgba(92,144,152,.35);
+    padding:1px 5px; border-radius:4px; margin-left:6px; letter-spacing:.05em;
+  }
+
+  /* Mismos 3 pills (Nuevo ingreso / Historial / Taller) que index.html —
+     comparten clase .tab-btn para que se vean idénticos en los dos paneles. */
+  nav{display:flex; gap:6px; padding-bottom:10px;}
+  nav .tab-btn{
+    flex:1 1 0; min-width:0; box-sizing:border-box;
+    background:var(--bg-raised); border:1px solid var(--border);
+    color:var(--text-dim); text-decoration:none;
+    padding:10px 6px; border-radius:12px;
+    font-size:13px; font-weight:700; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    transition:.15s;
+    line-height:1.15;
+  }
+  nav .tab-btn:active{transform:scale(.97);}
+  nav .tab-btn.active{
+    background:var(--accent); color:#1b1b1b; border-color:var(--accent);
+    box-shadow:0 3px 10px rgba(251,90,36,.28);
+  }
+
+  /* Fila con el candado de edición y el refresh — propia de Taller, no existe
+     en index.html, así que va aparte, debajo de los 3 tabs. */
+  .header-actions{display:flex; gap:8px; align-items:center; padding-bottom:12px;}
+  .header-actions button{
+    background:var(--bg-raised); color:var(--text);
+    border:1px solid var(--border); border-radius:8px; padding:8px 14px;
+    font-size:13px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+  }
+  .header-actions .unlock-btn.locked{background:var(--danger); color:#fff; border-color:var(--danger);}
+  .header-actions .unlock-btn.unlocked{background:var(--ok); color:#fff; border-color:var(--ok);}
+  .unlock-btn .ic{display:inline-flex; vertical-align:-3px;}
+  .unlock-btn .ic .ui-icon{width:16px; height:16px;}
+  #btnRefresh{
+    flex:none; width:40px; height:40px; padding:0;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+
+  /* ---------- tablet / desktop: mismo breakpoint (820px) y mismo menú
+     lateral fijo que index.html ---------- */
+  @media (min-width:820px){
+    html,body{height:100%;}
+    header{
+      position:fixed; top:0; left:0; bottom:0; width:260px; z-index:20;
+      border-bottom:none; border-right:1px solid var(--border);
+      padding:26px 18px 20px 18px; display:flex; flex-direction:column;
+      overflow-y:auto; box-shadow:2px 0 14px rgba(0,0,0,.25);
+    }
+    .brand{flex-direction:column; align-items:flex-start; gap:8px; margin-bottom:30px;}
+    .brand h1{font-size:20px;}
+    .brand .tag{font-size:12px; padding:3px 8px;}
+    nav{flex-direction:column; gap:10px; margin-top:4px; padding-bottom:0;}
+    nav .tab-btn{
+      flex:none; flex-direction:row; justify-content:flex-start; text-align:left;
+      border-radius:12px; padding:16px 18px; font-size:16px; gap:14px;
+    }
+    nav .tab-btn .nav-icon{width:46px; height:46px; margin-bottom:0;}
+    nav .tab-btn .nav-icon .ui-icon{width:28px; height:28px;}
+    nav .tab-btn.active{box-shadow:0 4px 14px rgba(251,90,36,.28);}
+    .header-actions{flex-direction:column; align-items:stretch; margin-top:18px; padding-bottom:0;}
+    .header-actions button{justify-content:center;}
+    .subbar, #viewKanban, #viewStats{margin-left:260px;}
+  }
+
+  /* Barra secundaria con el toggle Kanban/Estadísticas — sticky bajo el header,
+     siempre visible aunque el header esté apretado por el notch del celular. */
+  .subbar{
+    background:var(--bg); border-bottom:1px solid var(--border);
+    padding:10px 20px; display:flex; gap:12px; align-items:center;
+    position:sticky; top:0; z-index:19;
+    /* En mobile el header envuelve y no sabemos su alto exacto, así que dejamos
+       sticky arriba sin offset — se apila naturalmente contra el header. */
+  }
+  .subbar .view-toggle{margin:0; flex:none;}
+  .subbar .range-info{margin-left:auto; color:var(--text-dim); font-size:12px; font-family:'Space Mono',monospace;}
+
+  /* ---------- KPI strip ---------- */
+  .kpi-strip{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+    gap:12px; padding:14px 20px; background:var(--bg);
+  }
+  .kpi{
+    background:var(--bg-panel); border:1px solid var(--border); border-radius:12px;
+    padding:14px 16px; display:flex; flex-direction:column; gap:4px;
+  }
+  .kpi .lbl{font-size:11px; color:var(--text-dim); font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:.06em;}
+  .kpi .num{font-size:28px; font-weight:800; color:var(--text); line-height:1.1;}
+  .kpi .sub{font-size:11.5px; color:var(--text-dim);}
+  .kpi.warn .num{color:var(--warn);}
+  .kpi.danger .num{color:var(--danger);}
+  .kpi.ok .num{color:var(--ok);}
+
+  /* ---------- kanban ---------- */
+  .board-wrap{padding:6px 20px 30px 20px; position:relative;}
+  .board{
+    display:grid; grid-auto-flow:column; grid-auto-columns:280px;
+    gap:14px; overflow-x:auto; padding-bottom:12px;
+    scroll-snap-type:x proximity;
+    scroll-behavior:smooth;
+    /* Pan horizontal agarrando el fondo del tablero (no una ficha) — ver el
+       listener de pointerdown/move/up en el bloque de JS, al final del archivo. */
+    cursor:grab;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-x:contain;
+  }
+  .board.board-panning{
+    cursor:grabbing;
+    scroll-snap-type:none !important;
+    scroll-behavior:auto !important;
+    user-select:none;
+  }
+  /* Scrollbar horizontal discreta — grafito con thumb naranja metálico. */
+  .board::-webkit-scrollbar{ height:9px; }
+  .board::-webkit-scrollbar-track{ background:var(--bg-raised); border-radius:5px; }
+  .board::-webkit-scrollbar-thumb{ background:var(--ves-orange-hot); border-radius:5px; opacity:.7; }
+  .board{ scrollbar-width:thin; scrollbar-color:var(--accent) var(--bg-raised); }
+  /* Flechas fijas a los costados del tablero — mueven una columna por click,
+     para llegar a "Control final"/"Listo" sin depender de arrastrar una
+     ficha hasta el borde (eso lo resuelve el auto-scroll del drag, esto es
+     para navegar el tablero sin arrastrar nada). */
+  /* position:fixed (no absolute) — el tablero puede ser mucho más alto que la
+     pantalla (columnas con muchas fichas), así que centrar "top:50%" contra
+     el wrapper las mandaba fuera de vista. Fijas a la ventana, siempre a mano. */
+  .board-nav{
+    position:fixed; top:55%; transform:translateY(-50%); z-index:50;
+    width:42px; height:42px; border-radius:50%;
+    background:var(--bg-panel); border:1px solid var(--border); color:var(--text);
+    font-size:20px; font-weight:700; line-height:1; cursor:pointer;
+    box-shadow:0 2px 10px rgba(0,0,0,.5);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .board-nav:active{background:var(--accent); color:#1b1b1b; border-color:var(--accent);}
+  .board-nav:disabled{ opacity:.25; cursor:default; pointer-events:none; }
+  .board-nav .ui-icon{width:20px; height:20px;}
+  .board-nav-left{left:8px;}
+  .board-nav-right{right:8px;}
+  @media (min-width:820px){
+    .board-nav-left{left:272px;}
+  }
+  .col{
+    background:linear-gradient(145deg, #252b2e 0%, #171b1d 45%, #101314 100%);
+    border-radius:12px; border:1px solid rgba(255,255,255,.08);
+    box-shadow:0 8px 24px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.05);
+    display:flex; flex-direction:column; min-height:70vh;
+    scroll-snap-align:start;
+  }
+  .col-head{
+    padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08);
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    position:sticky; top:0; border-radius:12px 12px 0 0;
+    background:linear-gradient(180deg, #2c3336 0%, #1b1f21 100%);
+    cursor:grab;
+  }
+  .col-head .name{font-weight:700; font-size:14px; display:flex; align-items:center; gap:8px;}
+  .col-head .dot{width:10px; height:10px; border-radius:50%;}
+  .col-head .count{
+    background:var(--bg-raised); border-radius:12px; padding:2px 10px;
+    font-family:'Space Mono',monospace; font-size:12.5px; font-weight:700; color:var(--text-dim);
+  }
+  .col-body{
+    flex:1; padding:10px; display:flex; flex-direction:column; gap:8px;
+    overflow-y:auto; min-height:60vh;
+  }
+  .col-body.drop-hover{background:rgba(251,90,36,.08);}
+
+  .card{
+    background:linear-gradient(145deg, #2d3437 0%, #1d2224 55%, #171b1d 100%);
+    border:1px solid rgba(255,255,255,.07); border-radius:10px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 3px 10px rgba(0,0,0,.28);
+    padding:12px; cursor:pointer;
+    transition:background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+    border-left:4px solid var(--border);
+    -webkit-user-select:none; -moz-user-select:none; user-select:none;
+    -webkit-touch-callout:none; -webkit-user-drag:none;
+    /* Sin esto, a mitad de un arrastre largo (varias columnas) el navegador
+       reinterpreta el gesto como scroll nativo y nos "roba" el drag — por
+       eso antes no llegaba a las últimas columnas ni con mouse ni con el
+       dedo. touch-action:none le dice al navegador que TODO el manejo de
+       este elemento lo hace JS (SortableJS), sin excepciones a mitad de
+       camino. */
+    touch-action:none;
+  }
+  .card:hover{border-color:var(--ves-orange); box-shadow:0 0 0 1px rgba(255,101,0,.35), 0 3px 10px rgba(0,0,0,.28);}
+  .card.sortable-ghost{opacity:.4; background:var(--accent); border-color:var(--accent);}
+  .card.sortable-drag{transform:rotate(2deg); box-shadow:0 6px 20px rgba(0,0,0,.5);}
+  .card.sortable-fallback{opacity:.9 !important;}
+  body.sortable-dragging-active{-webkit-user-select:none; -moz-user-select:none; user-select:none;}
+  .card .plate{
+    font-family:'Space Mono',monospace; font-weight:700; color:var(--accent);
+    font-size:15px; margin-bottom:2px; display:flex; align-items:center; gap:6px;
+  }
+  .card .veh{font-size:13px; color:var(--text); margin-bottom:6px;}
+  .card .cli{font-size:12.5px; color:var(--text-dim); margin-bottom:8px;}
+  .card .meta{
+    display:flex; justify-content:space-between; gap:8px; align-items:center;
+    font-size:11.5px; font-family:'Space Mono',monospace; color:var(--text-dim);
+  }
+  .card .meta .days{color:var(--text);}
+  .card .meta .days.warn{color:var(--warn);}
+  .card .meta .days.danger{color:var(--danger); font-weight:700;}
+  .card .badges{display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;}
+  .card .badge{font-size:10.5px; padding:2px 6px; border-radius:4px; background:var(--bg-panel); color:var(--text-dim); font-family:'Space Mono',monospace; display:inline-flex; align-items:center; gap:4px;}
+  .card .badge.att{color:var(--accent-2);}
+  .card .badge.tec{color:var(--accent);}
+
+  /* Column color accents (dot + card left border) */
+  .col[data-estado="ingresado"]           .dot{background:#8CA0A5;} .card[data-estado="ingresado"]{border-left-color:#8CA0A5;}
+  .col[data-estado="diagnostico"]         .dot{background:#5C9098;} .card[data-estado="diagnostico"]{border-left-color:#5C9098;}
+  .col[data-estado="presupuestado"]       .dot{background:#B48CE0;} .card[data-estado="presupuestado"]{border-left-color:#B48CE0;}
+  .col[data-estado="aprobado"]            .dot{background:#FB5A24;} .card[data-estado="aprobado"]{border-left-color:#FB5A24;}
+  .col[data-estado="esperando_repuesto"]  .dot{background:#E67E22;} .card[data-estado="esperando_repuesto"]{border-left-color:#E67E22;}
+  .col[data-estado="reparacion"]          .dot{background:#F0AD4E;} .card[data-estado="reparacion"]{border-left-color:#F0AD4E;}
+  .col[data-estado="control"]             .dot{background:#5CB8C0;} .card[data-estado="control"]{border-left-color:#5CB8C0;}
+  .col[data-estado="lavadero"]            .dot{background:#4FC3F7;} .card[data-estado="lavadero"]{border-left-color:#4FC3F7;}
+  .col[data-estado="listo"]               .dot{background:#5CB85C;} .card[data-estado="listo"]{border-left-color:#5CB85C;}
+  .col[data-estado="entregado"]           .dot{background:#3a3f40;} .card[data-estado="entregado"]{border-left-color:#3a3f40; opacity:.65;}
+
+  /* ---------- modal detail ---------- */
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:60; display:none; align-items:flex-start; justify-content:center; padding:calc(40px + env(safe-area-inset-top, 0px)) 16px 40px 16px; overflow-y:auto;}
+  .overlay.open{display:flex;}
+  .modal{background:var(--bg); border:1px solid var(--border); border-radius:14px; max-width:720px; width:100%; padding:0; box-shadow:0 20px 60px rgba(0,0,0,.5);}
+  .modal-head{padding:16px 20px 10px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; background:var(--bg); border-radius:14px 14px 0 0; z-index:5;}
+  .modal-head .plate-big{font-family:'Space Mono',monospace; color:var(--accent); font-size:22px; font-weight:700;}
+  .modal-close{background:none; border:none; color:var(--text-dim); font-size:26px; cursor:pointer;}
+  .modal-body{padding:16px 20px 24px 20px;}
+  .row{display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--border); font-size:14px; gap:12px;}
+  .row .k{color:var(--text-dim); flex:none;}
+  .row .v{text-align:right;}
+  .section-label{font-family:'Space Mono',monospace; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--accent-2); margin:20px 0 10px 0; display:flex; align-items:center; gap:8px;}
+  .section-label::after{content:''; flex:1; height:1px; background:var(--border);}
+
+  .estado-picker{display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-bottom:10px;}
+  .estado-btn{background:var(--bg-panel); border:1.5px solid var(--border); color:var(--text); border-radius:8px; padding:12px 10px; cursor:pointer; text-align:left; font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px;}
+  .estado-btn:hover{border-color:var(--accent-2);}
+  .estado-btn.active{background:var(--accent); color:#1b1b1b; border-color:var(--accent); font-weight:700;}
+  .estado-btn .dot{width:10px; height:10px; border-radius:50%;}
+
+  .field textarea, .field input{
+    width:100%; background:var(--bg-raised); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:10px 12px; font-size:14px; outline:none; font-family:inherit;
+  }
+  .field textarea{min-height:80px; resize:vertical;}
+  .field label{display:block; font-size:12.5px; color:var(--text-dim); margin-bottom:6px;}
+  .btn-primary{background:var(--accent); color:#1b1b1b; border:none; border-radius:8px; padding:12px 16px; font-weight:700; font-size:14px; cursor:pointer; width:100%;}
+  .btn-primary:disabled{opacity:.5; cursor:default;}
+  .btn-outline{background:var(--bg-raised); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:10px 14px; font-size:13px; cursor:pointer;}
+  .btn-outline.copy-ok{background:var(--ok); border-color:var(--ok); color:#fff;}
+
+  .log{background:var(--bg-panel); border-radius:8px; padding:10px 12px; font-size:12.5px; font-family:'Space Mono',monospace; max-height:200px; overflow-y:auto;}
+  .log .l{padding:4px 0; border-bottom:1px dashed var(--border); display:flex; justify-content:space-between; gap:8px;}
+  .log .l:last-child{border-bottom:none;}
+  .log .l .estado{color:var(--accent);}
+  .log .l .at{color:var(--text-dim); font-size:11.5px; white-space:nowrap;}
+  .log .l .nota{color:var(--text); font-size:12px; margin-top:3px; padding-left:4px; font-family:'Work Sans',system-ui,sans-serif; opacity:.9;}
+
+  /* ---------- vista de estadísticas ---------- */
+  .view-toggle{
+    display:flex; gap:6px; margin-left:auto; align-items:center;
+    background:var(--bg-raised); border:1px solid var(--border); border-radius:8px; padding:3px;
+  }
+  .view-toggle button{
+    background:none; border:none; color:var(--text-dim);
+    padding:6px 12px; font-size:13px; font-weight:600; cursor:pointer; border-radius:6px;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .view-toggle button.active{background:var(--accent); color:#1b1b1b;}
+
+  .stats-wrap{padding:14px 20px 30px 20px;}
+  .stats-filters{
+    background:var(--bg-panel); border:1px solid var(--border); border-radius:12px;
+    padding:14px 16px; margin-bottom:16px;
+    display:flex; gap:12px; flex-wrap:wrap; align-items:end;
+  }
+  .stats-filters .field{display:flex; flex-direction:column; gap:4px;}
+  .stats-filters .field label{font-size:11px; color:var(--text-dim); font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:.06em;}
+  .stats-filters .field select, .stats-filters .field input{
+    background:var(--bg-raised); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:8px 12px; font-size:14px; outline:none;
+  }
+  .stats-filters .presets{display:flex; gap:6px; flex-wrap:wrap;}
+  .stats-filters .presets button{
+    background:var(--bg-raised); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer;
+  }
+  .stats-filters .presets button.active{background:var(--accent); color:#1b1b1b; border-color:var(--accent);}
+  .stats-filters .csv-btn{
+    margin-left:auto; background:var(--ok); color:#fff; border:none;
+    border-radius:6px; padding:9px 16px; font-size:13px; font-weight:700; cursor:pointer;
+    display:inline-flex; align-items:center; gap:7px;
+  }
+
+  .stats-summary{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+    gap:12px; margin-bottom:20px;
+  }
+  .stat-card{
+    background:var(--bg-panel); border:1px solid var(--border); border-radius:10px;
+    padding:14px 16px;
+  }
+  .stat-card .lbl{font-size:11.5px; color:var(--text-dim); font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:.05em;}
+  .stat-card .num{font-size:26px; font-weight:800; margin-top:4px;}
+  .stat-card .num.accent{color:var(--accent);}
+
+  .stats-table{
+    background:var(--bg-panel); border:1px solid var(--border); border-radius:12px;
+    overflow:hidden; margin-bottom:20px;
+  }
+  .stats-table table{width:100%; border-collapse:collapse;}
+  .stats-table th, .stats-table td{
+    padding:12px 14px; text-align:left; border-bottom:1px solid var(--border);
+    font-size:13.5px;
+  }
+  .stats-table th{
+    background:var(--bg-raised); color:var(--text-dim); font-weight:700;
+    font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:.04em; font-size:11.5px;
+  }
+  .stats-table tr:last-child td{border-bottom:none;}
+  .stats-table td.num{text-align:right; font-family:'Space Mono',monospace; font-weight:700;}
+  .stats-table .estado-cell{display:flex; align-items:center; gap:8px;}
+  .stats-table .estado-cell .dot{width:10px; height:10px; border-radius:50%;}
+
+  .lavadero-section{
+    background:linear-gradient(135deg, var(--bg-panel) 0%, rgba(79,195,247,.08) 100%);
+    border:1px solid #4FC3F7; border-radius:12px; padding:18px 20px; margin-bottom:20px;
+  }
+  .lavadero-section h3{margin:0 0 4px 0; font-size:16px; display:flex; align-items:center; gap:8px; color:#4FC3F7;}
+  .lavadero-section h3 .ui-icon{color:#4FC3F7;}
+  .lavadero-section .sub{font-size:13px; color:var(--text-dim); margin-bottom:14px;}
+  .lavadero-list{max-height:400px; overflow-y:auto;}
+  .lavadero-item{
+    background:var(--bg-panel); border:1px solid var(--border); border-radius:8px;
+    padding:10px 12px; margin-bottom:8px;
+    display:flex; gap:12px; align-items:center; flex-wrap:wrap;
+  }
+  .lavadero-item .plate{font-family:'Space Mono',monospace; font-weight:700; color:var(--accent); font-size:14px;}
+  .lavadero-item .info{flex:1; min-width:150px; font-size:13px;}
+  .lavadero-item .info .cli{color:var(--text-dim); font-size:12px;}
+  .lavadero-item .fecha{font-size:12px; font-family:'Space Mono',monospace; color:var(--text-dim);}
+  .lavadero-item .nota{
+    flex-basis:100%; background:var(--bg-raised); border-radius:6px;
+    padding:6px 10px; font-size:12.5px; margin-top:4px;
+  }
+  .weekly-bars{display:flex; gap:8px; align-items:end; margin-top:10px; height:100px;}
+  .weekly-bar{
+    flex:1; background:#4FC3F7; border-radius:4px 4px 0 0;
+    position:relative; min-height:4px;
+    display:flex; align-items:flex-start; justify-content:center; padding-top:4px;
+  }
+  .weekly-bar .count{color:#1b1b1b; font-weight:700; font-size:11px; font-family:'Space Mono',monospace;}
+  .weekly-bar .lbl{position:absolute; bottom:-20px; left:0; right:0; text-align:center; font-size:10px; color:var(--text-dim); font-family:'Space Mono',monospace; white-space:nowrap;}
+  .weekly-chart{padding-bottom:24px;}
+
+  .link-cliente{background:var(--bg-panel); border-radius:8px; padding:10px 12px; margin-top:8px; font-family:'Space Mono',monospace; font-size:12px; word-break:break-all; color:var(--accent-2); border:1px solid var(--border); display:flex; gap:8px; align-items:center;}
+  .link-cliente button{flex-shrink:0;}
+
+  /* ---------- Adjuntos posteriores en el taller ---------- */
+  .att-add-row{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0;}
+  .att-add-row .btn-att{
+    background:var(--bg-raised); border:1.5px dashed var(--accent);
+    color:var(--accent); font-weight:700; padding:14px 10px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    font-size:13.5px; cursor:pointer;
+  }
+  .att-add-row .btn-att:disabled{opacity:.5; cursor:default;}
+  .att-list{display:flex; flex-direction:column; gap:10px; margin-bottom:10px;}
+  .att-item{
+    display:flex; gap:12px; background:var(--bg-panel);
+    border:1px solid var(--border); border-radius:10px; padding:10px;
+  }
+  .att-item .att-thumb{
+    flex:none; width:96px; height:96px; background:#000;
+    border-radius:8px; overflow:hidden; position:relative;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .att-item .att-thumb img, .att-item .att-thumb video{width:100%; height:100%; object-fit:cover; display:block;}
+  .att-item .att-thumb .att-play{position:absolute; inset:0; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; color:#fff; font-size:32px; pointer-events:none;}
+  .att-item .att-info{flex:1; min-width:0; display:flex; flex-direction:column; gap:6px;}
+  .att-item .att-caption{font-size:14px; color:var(--text); line-height:1.3; word-wrap:break-word;}
+  .att-item .att-caption.empty{color:var(--text-dim); font-style:italic;}
+  .att-item .att-meta{font-size:11.5px; color:var(--text-dim); font-family:'Space Mono',monospace;}
+  .att-item .att-btns{display:flex; gap:6px; margin-top:auto; flex-wrap:wrap;}
+  .att-item .att-btns button{
+    background:var(--bg-raised); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:5px;
+  }
+  .att-item .att-btns button.att-wa{background:#25D366; color:#fff; border-color:#25D366;}
+  .att-item .att-btns button.att-del{background:transparent; color:var(--danger); border-color:rgba(214,85,63,.4);}
+  .att-empty{text-align:center; padding:14px; background:var(--bg-panel); border:1px dashed var(--border); border-radius:10px; color:var(--text-dim); font-size:13px;}
+  .att-uploading{background:var(--bg-panel); border:1px solid var(--accent); border-radius:10px; padding:10px 12px; margin-bottom:8px; font-size:13px;}
+  .att-uploading .name{color:var(--text); font-weight:600; word-break:break-all;}
+  .att-uploading .pct{color:var(--accent); font-family:'Space Mono',monospace;}
+  .att-progress{width:100%; height:6px; background:var(--bg-raised); border-radius:3px; overflow:hidden; margin-top:8px;}
+  .att-progress .bar{height:100%; background:var(--accent); width:0%; transition:width .2s;}
+
+  .toast{
+    position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
+    background:#2b3031; border:1px solid var(--accent); color:var(--text);
+    padding:12px 18px; border-radius:8px; z-index:100;
+    font-size:14px; box-shadow:0 8px 24px rgba(0,0,0,.5);
+    opacity:0; transition:opacity .2s; pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+
+  .empty-state{text-align:center; padding:60px 20px; color:var(--text-dim);}
+
+  /* Ocultamos los labels largos por default (mobile-first) y solo los mostramos
+     en pantallas anchas. Al revés, los labels cortos (solo ícono / palabra
+     corta) van visibles por default y se ocultan en desktop. */
+  .lbl-full{display:none;}
+  .lbl-short{display:inline;}
+  @media (min-width: 700px){
+    .lbl-full{display:inline;}
+    .lbl-short{display:none;}
+  }
+
+  /* Show only fitting columns on mobile — user swipes to see rest */
+  @media (max-width: 900px){
+    header{padding:calc(28px + env(safe-area-inset-top, 0px)) 14px 0 14px;}
+    .header-actions button{padding:7px 10px; font-size:13px;}
+    .brand h1{font-size:14px;}
+    .brand .tag{font-size:10px;}
+    .subbar{padding:8px 14px;}
+    .kpi-strip{padding:12px 14px; grid-template-columns:repeat(2, 1fr);}
+    .kpi .num{font-size:22px;}
+    .board-wrap{padding:6px 14px 30px 14px;}
+    /* 78vw deja asomar el borde de la columna siguiente (el usuario ve que
+       hay más Kanban a la derecha) sin achicar tanto la ficha que los datos
+       reales (patente, vehículo, cliente) queden ilegibles como con 180px fijos. */
+    .board{grid-auto-columns:minmax(220px, 78vw); gap:10px;}
+    .col{min-height:55vh;}
+    .col-head{padding:10px 10px;}
+    .col-head .name{font-size:12.5px;}
+    .col-body{padding:8px; gap:6px;}
+    .card{padding:9px 10px;}
+  }
+
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="tag">MI TALLER</span>
+    <h1>Panel de Taller <span class="ver">v19</span></h1>
+  </div>
+  <nav>
+    <a class="tab-btn" href="/"><span class="ic nav-icon metal-icon" data-icon="car"></span><span>Nuevo ingreso</span></a>
+    <a class="tab-btn" href="/#history"><span class="ic nav-icon metal-icon" data-icon="history"></span><span>Historial</span></a>
+    <a class="tab-btn active" href="/taller" style="text-decoration:none;"><span class="ic nav-icon metal-icon" data-icon="wrench"></span><span>Taller</span></a>
+  </nav>
+  <div class="header-actions">
+    <button class="unlock-btn locked" id="btnUnlock" title="Ingresar clave del taller para poder mover autos entre estados"></button>
+    <button id="btnRefresh" class="metal-icon" data-icon="refresh" title="Actualizar"></button>
+  </div>
+</header>
+
+<!-- Barra sticky con el toggle Kanban / Estadísticas — siempre visible -->
+<div class="subbar">
+  <div class="view-toggle">
+    <button class="active" data-view="kanban" id="tabKanban"><span class="ic inline-icon" data-icon="kanban"></span>Kanban</button>
+    <button data-view="stats" id="tabStats"><span class="ic inline-icon" data-icon="chart"></span>Estadísticas</button>
+  </div>
+</div>
+
+<!-- VISTA: KANBAN -->
+<div id="viewKanban">
+  <div class="kpi-strip" id="kpiStrip"></div>
+  <div class="board-wrap">
+    <button class="board-nav board-nav-left" id="boardNavLeft" data-icon="chevronLeft" title="Ver columnas anteriores" aria-label="Ver columnas anteriores" type="button"></button>
+    <div class="board" id="board"></div>
+    <button class="board-nav board-nav-right" id="boardNavRight" data-icon="chevronRight" title="Ver columnas siguientes" aria-label="Ver columnas siguientes" type="button"></button>
+  </div>
+</div>
+
+<!-- VISTA: ESTADÍSTICAS -->
+<div id="viewStats" style="display:none;">
+  <div class="stats-wrap" id="statsContent"></div>
+</div>
+
+<div class="overlay" id="detailOverlay">
+  <div class="modal" id="detailModal">
+    <div class="modal-head">
+      <span class="plate-big" id="dPlate">—</span>
+      <button class="modal-close" id="dClose">×</button>
+    </div>
+    <div class="modal-body" id="dBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+
+<script>window.APP_CONFIG={API_URL:'<?!= apiUrl ?>'};</script>
+<script>
+(function(){
+  const PANEL_VERSION = 'taller-v19-2026-10-03-svg-icons-native-scroll';
+  // Link público de la ficha para el cliente. Con Apps Script es la misma URL
+  // /exec con ?page=ver; en hosting estático es ver.html.
+  function urlPagina(nombre, tok){
+    const api = (window.APP_CONFIG && APP_CONFIG.API_URL) || '';
+    if(/\/exec(\?|$)/.test(api)) return api + '?page=' + nombre + '&t=' + encodeURIComponent(tok);
+    return new URL(nombre + '.html?t=' + encodeURIComponent(tok), location.href).href;
+  }
+  function apiUrl(){ return (window.APP_CONFIG && APP_CONFIG.API_URL) || ''; }
+  console.log('%cPanel de Taller ' + PANEL_VERSION, 'background:#FB5A24;color:#fff;padding:3px 8px;border-radius:4px;font-weight:700;');
+
+  // ---------- sistema de iconos SVG ----------
+  // Reemplaza todo emoji usado como icono en la UI. Cada entrada es el
+  // contenido interno (paths/shapes) de un <svg viewBox="0 0 24 24">.
+  // uiIcon(name, className) arma el <svg> inline completo; hydrateIcons()
+  // completa los elementos estáticos del HTML marcados con data-icon="name"
+  // (el header ya está parseado cuando este <script> corre, así que es más
+  // simple hidratar esos nodos que duplicar el SVG a mano en el HTML).
+  const ICON_PATHS = {
+    car: '<path d="M4 16h16M5 16l1.2-5.3A2 2 0 0 1 8.13 9.3h7.74a2 2 0 0 1 1.93 1.4L19 16M6 16v2.2a.8.8 0 0 0 .8.8h1.1a.8.8 0 0 0 .8-.8V16m8 0v2.2a.8.8 0 0 0 .8.8h1.1a.8.8 0 0 0 .8-.8V16"/><circle cx="7.6" cy="16.2" r="1.5"/><circle cx="16.4" cy="16.2" r="1.5"/>',
+    history: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4.5"/>',
+    wrench: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17v3h3l5.3-5.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2-2z"/>',
+    lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+    unlock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.2-2.4"/>',
+    refresh: '<path d="M4 12a8 8 0 0 1 13.7-5.7L20 8M20 4v4h-4M20 12a8 8 0 0 1-13.7 5.7L4 16M4 20v-4h4"/>',
+    kanban: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 4v16M15 4v9"/>',
+    chart: '<path d="M4 20V10M10 20V4M16 20v-7M4 20h16"/>',
+    user: '<circle cx="12" cy="8" r="3.3"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/>',
+    paperclip: '<path d="M16.5 7.5 9 15a3 3 0 1 0 4.2 4.2l7-7a5 5 0 1 0-7-7l-7 7"/>',
+    note: '<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8.5 9h7M8.5 13h7M8.5 17h4"/>',
+    phone: '<path d="M6.5 4h3l1.3 4-2 1.5a12 12 0 0 0 5.7 5.7l1.5-2 4 1.3v3a2 2 0 0 1-2.2 2A16 16 0 0 1 4.5 6.2 2 2 0 0 1 6.5 4z"/>',
+    camera: '<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7H8l1-2h6l1 2h2.5A1.5 1.5 0 0 1 20 8.5V18a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18z"/><circle cx="12" cy="13" r="3.3"/>',
+    video: '<rect x="4" y="6" width="12" height="12" rx="2"/><path d="M16 10.5 20 8v8l-4-2.5z"/>',
+    edit: '<path d="M5 19.5 5.8 16 16 5.8a2 2 0 0 1 2.8 0l.4.4a2 2 0 0 1 0 2.8L9 19 5 19.5z"/>',
+    trash: '<path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M9.5 7l.8 12a2 2 0 0 0 2 1.9h3.4a2 2 0 0 0 2-1.9L18.5 7"/>',
+    shower: '<path d="M7 4.5a4 4 0 0 1 7.8 1.3A3.6 3.6 0 0 1 17 9.3V11M4 11h16M8 15v.01M12 15v.01M16 15v.01M8 18v.01M12 18v.01M16 18v.01"/>',
+    download: '<path d="M12 4v10m0 0 4-4m-4 4-4-4M5 18h14"/>',
+    whatsapp: '<path d="M7 17.3 4.5 19.5 5.7 16A7.5 7.5 0 1 1 9.4 19l-2.4-.7z"/><path d="M9 9.3c0-.5.4-1 .9-1h.5c.3 0 .6.2.7.5l.6 1.4c.1.3 0 .6-.1.8l-.6.6c.4.9 1.2 1.7 2.1 2.1l.6-.6c.2-.1.5-.2.8-.1l1.4.6c.3.1.5.4.5.7v.5c0 .5-.5.9-1 .9-2.9 0-5.4-2.5-5.4-5.3z"/>',
+    photo: '<rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m5 18 5-5 3 3 2.5-2.5L20 17"/>',
+    play: '<path d="M8 5.5v13l11-6.5z"/>',
+    chevronLeft: '<path d="M15 5l-7 7 7 7"/>',
+    chevronRight: '<path d="M9 5l7 7-7 7"/>'
+  };
+  function uiIcon(name, className){
+    const inner = ICON_PATHS[name] || '';
+    return '<svg class="ui-icon' + (className ? ' ' + className : '') + '" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + inner + '</svg>';
+  }
+  function hydrateIcons(root){
+    (root || document).querySelectorAll('[data-icon]').forEach(el => {
+      el.innerHTML = uiIcon(el.getAttribute('data-icon'));
+    });
+  }
+  hydrateIcons(document);
+
+  const ESTADOS = [
+    { id:'ingresado',           label:'Ingresado',              short:'Ingresado' },
+    { id:'diagnostico',         label:'En diagnóstico',         short:'Diagnóstico' },
+    { id:'presupuestado',       label:'Presupuestado',          short:'Presupuestado' },
+    { id:'aprobado',            label:'Aprobado',               short:'Aprobado' },
+    { id:'esperando_repuesto',  label:'Esperando repuesto',     short:'Esp. repuesto' },
+    { id:'reparacion',          label:'En reparación',          short:'Reparación' },
+    { id:'control',             label:'Control final',          short:'Control' },
+    { id:'lavadero',            label:'Lavadero (externo)',     short:'Lavadero' },
+    { id:'listo',               label:'Listo para entregar',    short:'Listo' },
+    { id:'entregado',           label:'Entregado',              short:'Entregado' }
+  ];
+  const ESTADO_MAP = Object.fromEntries(ESTADOS.map(e => [e.id, e]));
+
+  // Umbrales de alerta por estado (días). Si un auto está más tiempo del
+  // recomendado en un estado, la tarjeta se pinta en warning o danger.
+  const UMBRAL = {
+    ingresado:1, diagnostico:2, presupuestado:3, aprobado:2,
+    esperando_repuesto:7, reparacion:7, control:1,
+    lavadero:2, listo:2, entregado:9999
+  };
+
+  let allRecords = [];
+  let currentRec = null;
+  // Instancias SortableJS del render actual del board — se destruyen al
+  // principio de cada renderBoard() antes de reconstruir las columnas, para
+  // no acumular instancias/listeners asociados a nodos que ya no existen.
+  let sortableInstances = [];
+  // true mientras se está arrastrando una ficha (o recién se soltó, por un
+  // instante) — evita que el click de "soltar la ficha" dispare también el
+  // click normal de abrir el modal de detalle.
+  let cardWasDragged = false;
+
+
+  // ---------- clave del taller ----------
+  // Guardamos clave + timestamp en localStorage (sobrevive a cerrar la
+  // pestaña/app, a diferencia de sessionStorage que se perdía siempre).
+  // El modo edición expira solo tras EDIT_TIMEOUT_MS de inactividad — cada
+  // acción exitosa (mover un auto, guardar notas) renueva el timestamp.
+  const SESSION_PASS_KEY = 'ves_taller_pass';
+  const SESSION_PASS_TS_KEY = 'ves_taller_pass_ts';
+  const EDIT_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutos
+
+  function getPass(){
+    try {
+      const p = localStorage.getItem(SESSION_PASS_KEY) || '';
+      if(!p) return '';
+      const ts = Number(localStorage.getItem(SESSION_PASS_TS_KEY) || 0);
+      if(!ts || (Date.now() - ts) > EDIT_TIMEOUT_MS){
+        // Expiró por inactividad — volvemos a modo lectura silenciosamente.
+        clearPass();
+        return '';
+      }
+      return p;
+    } catch(e){ return ''; }
+  }
+  function setPass(p){
+    try {
+      localStorage.setItem(SESSION_PASS_KEY, p);
+      localStorage.setItem(SESSION_PASS_TS_KEY, String(Date.now()));    } catch(e){}
+  }
+  // Renueva el timestamp de expiración — se llama tras cada acción exitosa
+  // en modo edición, así el contador de 15min arranca de nuevo cada vez que
+  // el usuario realmente usa el modo edición (ventana deslizante).
+  function touchPass(){
+    try {
+      if(localStorage.getItem(SESSION_PASS_KEY)) {
+        localStorage.setItem(SESSION_PASS_TS_KEY, String(Date.now()));
+      }
+    } catch(e){}
+  }
+  function clearPass(){
+    try {
+      localStorage.removeItem(SESSION_PASS_KEY);
+      localStorage.removeItem(SESSION_PASS_TS_KEY);
+    } catch(e){}
+  }
+  function isUnlocked(){ return !!getPass(); }
+  function refreshUnlockBtn(){
+    const btn = document.getElementById('btnUnlock');
+    if(isUnlocked()){
+      btn.innerHTML = '<span class="ic">' + uiIcon('unlock') + '</span><span class="lbl-full">Modo edición</span>';
+      btn.classList.remove('locked'); btn.classList.add('unlocked');
+      btn.title = 'Podés mover autos entre estados. Se mantiene activo 15 min sin uso. Tocá para salir del modo edición.';
+    } else {
+      btn.innerHTML = '<span class="ic">' + uiIcon('lock') + '</span><span class="lbl-full">Modo lectura</span>';
+      btn.classList.add('locked'); btn.classList.remove('unlocked');
+      btn.title = 'Ingresá la clave del taller para poder mover autos entre estados.';
+    }
+  }
+
+  // Única función que valida una clave contra el servidor antes de guardarla
+  // como "modo edición" activo. Antes había una segunda ruta (en el picker de
+  // estado del modal de detalle) que guardaba la clave tipeada SIN validarla
+  // contra /api/verify-password — recién se descubría que estaba mal en el
+  // primer intento real de mover un auto. Ahora btnUnlock y el picker de
+  // estado usan esta misma función, así nunca se guarda una clave sin validar.
+  async function requestUnlock(){
+    const p = prompt('Clave del taller para poder mover autos entre estados:');
+    if(!p) return false;
+    try{
+      const res = await fetch(apiUrl(), {
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify({ action:'verifyPassword', password: p })
+      });
+      const j = await res.json();
+      if(!j.ok || !j.valid){
+        showToast('Clave incorrecta', 3000);
+        return false;
+      }
+      setPass(p);
+      refreshUnlockBtn();
+      return true;
+    }catch(err){
+      showToast('Error de red al verificar la clave', 3500);
+      return false;
+    }
+  }
+
+  document.getElementById('btnUnlock').addEventListener('click', async ()=>{
+    if(isUnlocked()){
+      const yes = confirm('Salir del modo edición? Ya no vas a poder mover autos hasta ingresar la clave de nuevo.');
+      if(yes){ clearPass(); refreshUnlockBtn(); renderBoard(); showToast('Modo lectura ✓'); }
+      return;
+    }
+    const btn = document.getElementById('btnUnlock');
+    btn.disabled = true;
+    const ok = await requestUnlock();
+    btn.disabled = false;
+    if(ok){
+      renderBoard();
+      showToast('Modo edición ✓ — se mantiene 15 min sin uso');
+    }
+  });
+
+  // Revisa periódicamente si el modo edición expiró por inactividad y
+  // actualiza la UI (sin esperar a que el usuario intente mover algo).
+  setInterval(()=>{
+    const btn = document.getElementById('btnUnlock');
+    const wasUnlocked = btn.classList.contains('unlocked');
+    const nowUnlocked = isUnlocked(); // getPass() limpia sola si expiró
+    if(wasUnlocked && !nowUnlocked){
+      refreshUnlockBtn();
+      renderBoard();
+      showToast('Modo edición expirado por inactividad — volviste a modo lectura', 4000);
+    }
+  }, 30000);
+
+  // ---------- toast ----------
+  function showToast(msg, ms){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), ms || 2000);
+  }
+  function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function daysBetween(from, to){ if(!from) return 0; return Math.floor((to - new Date(from).getTime()) / 86400000); }
+  function fmtDateTime(ts){ if(!ts) return '—'; return new Date(ts).toLocaleString('es-AR', {day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit'}); }
+
+  // ---------- token para vista pública ----------
+  function makeToken(){
+    // 16 chars alfanuméricos — no criptografía dura, solo un id opaco.
+    if(window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID().replace(/-/g,'').substring(0, 16);
+    return 'tok' + Math.random().toString(36).substring(2, 12) + Date.now().toString(36).substring(0, 4);
+  }
+  function customerLinkFor(rec){
+    return urlPagina('ver', rec.customerToken);
+  }
+
+  // ---------- load records ----------
+  async function loadRecords(){
+    try{
+      const res = await fetch(apiUrl() + '?data=1&_=' + Date.now(), { cache:'no-store' });
+      const j = await res.json();
+      if(!j.ok) throw new Error(j.error || 'Error servidor');
+      allRecords = j.records || [];
+      // Asegurar customerToken en records que no lo tengan (auto-migración).
+      // Lo mandamos al server con PATCH (no requiere clave — no es campo sensible).
+      const missingToken = allRecords.filter(r => !r.customerToken);
+      for(const r of missingToken){
+        const tok = makeToken();
+        r.customerToken = tok;
+        // fire-and-forget
+        fetch(apiUrl(), {
+          method:'POST',
+          headers:{'Content-Type':'text/plain;charset=utf-8'},
+          body: JSON.stringify({ action:'patch', id: r.id, patch: { customerToken: tok } })
+        }).catch(()=>{});
+      }
+      // Ordenar del más nuevo al más viejo
+      allRecords.sort((a,b) => Number(new Date(b.createdAt || 0)) - Number(new Date(a.createdAt || 0)));
+      renderBoard();
+      renderKPIs();
+    }catch(err){
+      console.error(err);
+      showToast('No se pudo cargar: ' + (err.message || err), 4000);
+    }
+  }
+
+
+  // ---------- kanban render ----------
+  function estadoOf(rec){ return rec.estado || 'ingresado'; }
+
+  function renderBoard(){
+    const board = document.getElementById('board');
+    // Guardamos la posición horizontal ANTES de reconstruir — si no, cada
+    // cambio de estado (o cualquier otro render) te manda de vuelta al
+    // principio del Taller aunque estuvieras mirando la 6ta columna.
+    const previousScrollLeft = board.scrollLeft;
+    // Destruir las instancias Sortable del render anterior ANTES de tirar el
+    // contenido viejo — evita acumular instancias/listeners de document
+    // (forceFallback las agrega mientras se arrastra) atados a nodos que ya
+    // no van a existir.
+    sortableInstances.forEach(inst => { try{ inst.destroy(); }catch(e){} });
+    sortableInstances = [];
+    board.innerHTML = '';
+    // Agrupamos por estado
+    const byEstado = {};
+    ESTADOS.forEach(e => byEstado[e.id] = []);
+    allRecords.forEach(r => {
+      const es = estadoOf(r);
+      if(byEstado[es]) byEstado[es].push(r);
+      else byEstado.ingresado.push(r);
+    });
+    ESTADOS.forEach(estado => {
+      const col = document.createElement('div');
+      col.className = 'col';
+      col.dataset.estado = estado.id;
+      const items = byEstado[estado.id];
+      col.innerHTML =
+        '<div class="col-head">' +
+          '<span class="name"><span class="dot"></span>' + escapeHtml(estado.label) + '</span>' +
+          '<span class="count">' + items.length + '</span>' +
+        '</div>' +
+        '<div class="col-body" data-estado="' + estado.id + '">' +
+          items.map(cardHtml).join('') +
+        '</div>';
+      board.appendChild(col);
+    });
+    // Click handlers — ignoran el click si fue el "soltar" de un drag recién
+    // terminado (ver cardWasDragged / Sortable onStart-onEnd más abajo), así
+    // arrastrar una ficha no abre accidentalmente el modal de detalle.
+    board.querySelectorAll('.card').forEach(cardEl => {
+      cardEl.addEventListener('click', ()=>{
+        if(cardWasDragged) return;
+        const id = cardEl.dataset.id;
+        const rec = allRecords.find(r => r.id === id);
+        if(rec) openDetail(rec);
+      });
+    });
+    // Drag & drop (SortableJS) — solo si está desbloqueado
+    if(isUnlocked() && typeof Sortable !== 'undefined'){
+      // Auto-scroll horizontal PROPIO mientras arrastrás una ficha cerca del
+      // borde del tablero. El auto-scroll nativo de SortableJS (scroll:true)
+      // no engancha de forma confiable el contenedor .board (overflow-x,
+      // padre del .col-body donde se crea cada Sortable) en todos los
+      // navegadores/touch — así que lo hacemos a mano con la posición real
+      // del puntero durante el arrastre.
+      let dragPointerX = null;
+      let autoScrollRAF = null;
+      function autoScrollTick(){
+        if(dragPointerX == null) return;
+        const rect = board.getBoundingClientRect();
+        const edge = 130, maxSpeed = 40;
+        if(dragPointerX < rect.left + edge){
+          const k = Math.min(1, (rect.left + edge - dragPointerX) / edge);
+          board.scrollLeft -= maxSpeed * k;
+        } else if(dragPointerX > rect.right - edge){
+          const k = Math.min(1, (dragPointerX - (rect.right - edge)) / edge);
+          board.scrollLeft += maxSpeed * k;
+        }
+      }
+      function autoScrollLoop(){
+        autoScrollTick();
+        autoScrollRAF = requestAnimationFrame(autoScrollLoop);
+      }
+      function dragPointerMove(e){
+        const t = (e.touches && e.touches[0]) ? e.touches[0] : e;
+        if(t && typeof t.clientX === 'number') dragPointerX = t.clientX;
+      }
+      function startAutoScroll(){
+        dragPointerX = null;
+        cardWasDragged = true;
+        document.body.classList.add('sortable-dragging-active');
+        document.addEventListener('dragover', dragPointerMove, true);
+        document.addEventListener('mousemove', dragPointerMove, true);
+        // pointermove cubre navegadores/dispositivos donde el gesto llega
+        // como evento de puntero (p.ej. algunos Android) sin un mousemove
+        // equivalente — así el autoscroll no depende de un solo tipo de evento.
+        document.addEventListener('pointermove', dragPointerMove, true);
+        document.addEventListener('touchmove', dragPointerMove, {capture:true, passive:true});
+        // requestAnimationFrame en vez de setInterval(16) — más estable: se
+        // pausa solo si la pestaña pierde foco y no se desincroniza del
+        // repintado real del navegador durante el drag con forceFallback.
+        autoScrollRAF = requestAnimationFrame(autoScrollLoop);
+      }
+      function stopAutoScroll(){
+        document.body.classList.remove('sortable-dragging-active');
+        document.removeEventListener('dragover', dragPointerMove, true);
+        document.removeEventListener('mousemove', dragPointerMove, true);
+        document.removeEventListener('pointermove', dragPointerMove, true);
+        document.removeEventListener('touchmove', dragPointerMove, true);
+        if(autoScrollRAF){ cancelAnimationFrame(autoScrollRAF); autoScrollRAF = null; }
+        dragPointerX = null;
+        // Por si quedó alguna selección de texto residual del navegador.
+        if(window.getSelection){ try{ window.getSelection().removeAllRanges(); }catch(e){} }
+        // Pequeño margen antes de volver a permitir el click de abrir el
+        // modal — el click que dispara el navegador al soltar el drag llega
+        // justo después de onEnd, así que limpiamos el flag con un timeout
+        // corto en vez de inmediatamente.
+        setTimeout(()=>{ cardWasDragged = false; }, 150);
+      }
+      board.querySelectorAll('.col-body').forEach(colBody => {
+        const inst = Sortable.create(colBody, {
+          group:'kanban',
+          animation:180,
+          delay:120, delayOnTouchOnly:true,
+          forceFallback:true,
+          fallbackTolerance:3,
+          onStart: startAutoScroll,
+          onEnd: stopAutoScroll,
+          onAdd: async (evt) => {
+            const cardEl = evt.item;
+            const id = cardEl.dataset.id;
+            const nuevoEstado = evt.to.dataset.estado;
+            const rec = allRecords.find(r => r.id === id);
+            if(!rec) return;
+            const anterior = rec.estado;
+            // Pedimos nota opcional según el estado — con placeholders útiles
+            // por defecto para lavadero, esperando repuesto, etc.
+            const nota = promptEstadoNota(nuevoEstado, rec);
+            if(nota === null){
+              // Canceló — deshacemos el drop revirtiendo visualmente.
+              renderBoard();
+              return;
+            }
+            // Optimistic update
+            rec.estado = nuevoEstado;
+            cardEl.dataset.estado = nuevoEstado;
+            renderKPIs();
+            const ok = await patchStatus(rec, nuevoEstado, nota);
+            if(!ok){
+              // rollback
+              rec.estado = anterior;
+              renderBoard();
+              renderKPIs();
+            } else {
+              showToast(rec.vehiculo.patente + ' → ' + ESTADO_MAP[nuevoEstado].short);
+              renderBoard(); // sincroniza contadores + logs
+            }
+          },
+        });
+        sortableInstances.push(inst);
+      });
+    }
+    // Restaurar posición horizontal después de reconstruir columnas, limitada
+    // al nuevo máximo (las columnas pueden haber cambiado de ancho/cantidad).
+    requestAnimationFrame(()=>{
+      const maxScroll = Math.max(0, board.scrollWidth - board.clientWidth);
+      board.scrollLeft = Math.min(previousScrollLeft, maxScroll);
+      if(typeof updateBoardNavState === 'function') updateBoardNavState();
+    });
+  }
+
+  function cardHtml(rec){
+    const v = rec.vehiculo || {};
+    const c = rec.cliente || {};
+    const es = estadoOf(rec);
+    const now = Date.now();
+    const dTaller = daysBetween(rec.createdAt, now);
+    // Días en el estado actual — usa el último historial de estado, o createdAt
+    const hist = rec.estadoHistorial || [];
+    const lastChange = hist.length ? hist[hist.length - 1].at : (new Date(rec.createdAt).getTime());
+    const dEstado = Math.floor((now - lastChange) / 86400000);
+    const umbral = UMBRAL[es] || 5;
+    const alertClass = dEstado >= umbral * 2 ? 'danger' : (dEstado >= umbral ? 'warn' : '');
+    const attCount = Array.isArray(rec.attachments) ? rec.attachments.length : 0;
+    return (
+      '<div class="card" data-id="' + escapeHtml(rec.id) + '" data-estado="' + es + '">' +
+        '<div class="plate">' + escapeHtml(v.patente || '—') +
+          (rec.ordenNro ? ' <span style="color:var(--text-dim); font-size:11px;">· #' + escapeHtml(rec.ordenNro) + '</span>' : '') +
+        '</div>' +
+        '<div class="veh">' + escapeHtml(((v.marca||'') + ' ' + (v.modelo||'')).trim() || '—') + '</div>' +
+        '<div class="cli">' + escapeHtml(c.nombre || '—') + '</div>' +
+        '<div class="meta">' +
+          '<span class="days ' + alertClass + '">' + dEstado + 'd en estado</span>' +
+          '<span>Total ' + dTaller + 'd</span>' +
+        '</div>' +
+        (attCount || rec.tecnicoAsignado ?
+          '<div class="badges">' +
+            (rec.tecnicoAsignado ? '<span class="badge tec">' + uiIcon('user','inline-icon') + ' ' + escapeHtml(rec.tecnicoAsignado) + '</span>' : '') +
+            (attCount ? '<span class="badge att">' + uiIcon('paperclip','inline-icon') + ' ' + attCount + '</span>' : '') +
+          '</div>'
+        : '') +
+      '</div>'
+    );
+  }
+
+  // ---------- KPIs ----------
+  function renderKPIs(){
+    const strip = document.getElementById('kpiStrip');
+    const activos = allRecords.filter(r => estadoOf(r) !== 'entregado');
+    const enTaller = activos.length;
+    // Tiempo promedio de ciclo (entregados últimos 60 días)
+    const now = Date.now();
+    const entregadosRecientes = allRecords.filter(r => {
+      if(estadoOf(r) !== 'entregado') return false;
+      const hist = r.estadoHistorial || [];
+      const lastEntreg = hist.filter(h => h.estado === 'entregado').pop();
+      if(!lastEntreg) return false;
+      return now - lastEntreg.at < 60 * 86400000;
+    });
+    const ciclos = entregadosRecientes.map(r => {
+      const hist = r.estadoHistorial || [];
+      const lastEntreg = hist.filter(h => h.estado === 'entregado').pop();
+      if(!lastEntreg) return null;
+      return (lastEntreg.at - new Date(r.createdAt).getTime()) / 86400000;
+    }).filter(x => x != null);
+    const avgCiclo = ciclos.length ? (ciclos.reduce((a,b)=>a+b,0) / ciclos.length) : null;
+
+    // Esperando aprobación con >3 días
+    const espAprob = activos.filter(r => {
+      if(r.estado !== 'presupuestado') return false;
+      const hist = r.estadoHistorial || [];
+      const last = hist.length ? hist[hist.length - 1].at : new Date(r.createdAt).getTime();
+      return (now - last) / 86400000 >= 3;
+    }).length;
+    // Listos para entregar
+    const listos = activos.filter(r => r.estado === 'listo').length;
+    // Aprobados esperando repuestos (aprobado con >2 días)
+    const aprob = activos.filter(r => {
+      if(r.estado !== 'aprobado') return false;
+      const hist = r.estadoHistorial || [];
+      const last = hist.length ? hist[hist.length - 1].at : new Date(r.createdAt).getTime();
+      return (now - last) / 86400000 >= 2;
+    }).length;
+
+    strip.innerHTML =
+      kpiCard('Autos en taller', enTaller, 'activos (no entregados)') +
+      kpiCard('Ciclo promedio', avgCiclo != null ? avgCiclo.toFixed(1) + 'd' : '—', 'entregados últimos 60d') +
+      kpiCard('Esperando aprobación', espAprob, 'con >3 días — llamar al cliente', espAprob > 0 ? 'warn' : '') +
+      kpiCard('Esperando repuestos', aprob, 'aprobados con >2 días', aprob > 0 ? 'warn' : '') +
+      kpiCard('Listos para retirar', listos, 'pendientes de retiro', listos > 0 ? 'ok' : '');
+  }
+  function kpiCard(lbl, num, sub, cls){
+    return '<div class="kpi ' + (cls||'') + '">' +
+      '<div class="lbl">' + escapeHtml(lbl) + '</div>' +
+      '<div class="num">' + escapeHtml(String(num)) + '</div>' +
+      '<div class="sub">' + escapeHtml(sub) + '</div>' +
+    '</div>';
+  }
+
+
+  // ---------- detail modal ----------
+  const overlay = document.getElementById('detailOverlay');
+  document.getElementById('dClose').addEventListener('click', ()=> overlay.classList.remove('open'));
+  overlay.addEventListener('click', e => { if(e.target === overlay) overlay.classList.remove('open'); });
+
+  function openDetail(rec){
+    currentRec = rec;    const v = rec.vehiculo || {}; const c = rec.cliente || {};
+    document.getElementById('dPlate').textContent = v.patente || '—';
+    const es = estadoOf(rec);
+    const hist = (rec.estadoHistorial || []).slice().reverse();
+    const now = Date.now();
+    const attCount = Array.isArray(rec.attachments) ? rec.attachments.length : 0;
+
+    const estadoBtns = ESTADOS.map(e =>
+      '<button class="estado-btn ' + (e.id === es ? 'active' : '') + '" data-estado="' + e.id + '" type="button">' +
+        '<span class="dot" style="background:' + colorForEstado(e.id) + '"></span>' +
+        escapeHtml(e.label) +
+      '</button>'
+    ).join('');
+
+    const logHtml = hist.length
+      ? '<div class="log">' + hist.map(h =>
+          '<div class="l">' +
+            '<div style="flex:1;">' +
+              '<span class="estado">' + escapeHtml(ESTADO_MAP[h.estado]?.label || h.estado) + '</span>' +
+              (h.nota ? '<div class="nota">' + uiIcon('note','inline-icon') + ' ' + escapeHtml(h.nota) + '</div>' : '') +
+            '</div>' +
+            '<span class="at">' + fmtDateTime(h.at) + '</span>' +
+          '</div>'
+        ).join('') + '</div>'
+      : '<div class="log">Sin cambios de estado todavía.</div>';
+
+    document.getElementById('dBody').innerHTML =
+      '<div class="row"><span class="k">Cliente</span><span class="v">' + escapeHtml(c.nombre || '—') + '</span></div>' +
+      '<div class="row"><span class="k">Teléfono</span><span class="v">' + escapeHtml(c.telefono || '—') + '</span></div>' +
+      '<div class="row"><span class="k">Vehículo</span><span class="v">' + escapeHtml(((v.marca||'') + ' ' + (v.modelo||'') + ' ' + (v.anio||'')).trim() || '—') + '</span></div>' +
+      '<div class="row"><span class="k">Kilometraje</span><span class="v">' + escapeHtml(v.km || '—') + '</span></div>' +
+      '<div class="row"><span class="k">N° orden</span><span class="v">' + escapeHtml(rec.ordenNro || '—') + '</span></div>' +
+      '<div class="row"><span class="k">Ingreso</span><span class="v">' + fmtDateTime(rec.createdAt) + '</span></div>' +
+      '<div class="row"><span class="k">Días en taller</span><span class="v">' + daysBetween(rec.createdAt, now) + ' días</span></div>' +
+
+      '<div class="section-label">Cambiar estado' + (!isUnlocked() ? ' — ' + uiIcon('lock','inline-icon') + ' requiere clave' : '') + '</div>' +
+      '<div class="estado-picker" id="dEstadoPicker">' + estadoBtns + '</div>' +
+
+      '<div class="section-label">Técnico asignado</div>' +
+      '<div class="field"><input type="text" id="dTecnico" placeholder="Nombre del técnico" value="' + escapeHtml(rec.tecnicoAsignado || '') + '" ' + (isUnlocked() ? '' : 'disabled') + '></div>' +
+
+      '<div class="section-label">Notas internas</div>' +
+      '<div class="field"><textarea id="dNotas" placeholder="Notas privadas del gerente. El cliente no las ve." ' + (isUnlocked() ? '' : 'disabled') + '>' + escapeHtml(rec.notasInternas || '') + '</textarea></div>' +
+      (isUnlocked() ? '<button class="btn-primary" id="dGuardarNotas" style="margin-top:8px;">Guardar técnico y notas</button>' : '') +
+
+      '<div class="section-label">Historial de estados</div>' +
+      logHtml +
+
+      '<div class="section-label">Link privado del cliente</div>' +
+      '<div style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">Compartí este link con ' + escapeHtml(c.nombre || 'el cliente') + ' — puede ver el estado actual y los adjuntos posteriores, pero no las notas internas.</div>' +
+      '<div class="link-cliente">' +
+        '<span style="flex:1; overflow:hidden;">' + escapeHtml(customerLinkFor(rec)) + '</span>' +
+        '<button class="btn-outline" id="dCopyLink">Copiar</button>' +
+        '<button class="btn-outline" id="dWhatsappLink" style="background:#25D366; border-color:#25D366; color:#fff; display:inline-flex; align-items:center; gap:6px;">' + uiIcon('whatsapp','inline-icon') + ' WhatsApp</button>' +
+      '</div>' +
+
+      '<div class="section-label">Fotos y videos posteriores' + (attCount ? ' (' + attCount + ')' : '') + '</div>' +
+      '<div style="font-size:12.5px; color:var(--text-dim); margin-bottom:8px;">Para documentar daños detectados después del lavado, mostrar reparaciones ya hechas, o cualquier cosa nueva. Se muestran también en el link privado del cliente.</div>' +
+      '<div id="attUploading"></div>' +
+      '<div class="att-list" id="attList"></div>' +
+      '<div class="att-add-row">' +
+        '<button class="btn-att" id="btnAttPhoto" type="button">' + uiIcon('camera','inline-icon') + ' Agregar foto</button>' +
+        '<button class="btn-att" id="btnAttVideo" type="button">' + uiIcon('video','inline-icon') + ' Grabar video (60s)</button>' +
+      '</div>' +
+      '<input type="file" id="input_attPhoto" accept="image/*" capture="environment" style="display:none;">' +
+      '<input type="file" id="input_attVideo" accept="video/*" capture="environment" style="display:none;">';
+
+    // Handlers
+    document.querySelectorAll('#dEstadoPicker .estado-btn').forEach(btn => {
+      btn.addEventListener('click', async ()=>{
+        if(!isUnlocked()){
+          const ok = await requestUnlock();
+          if(!ok) return;
+        }
+        const nuevo = btn.dataset.estado;
+        if(nuevo === estadoOf(rec)) return;
+        // Al tildar un estado en la ficha, guardamos directo — sin prompt de
+        // nota. Si el usuario quiere dejar nota puede escribirla después en el
+        // campo "Notas internas" del mismo modal. Antes preguntábamos por nota
+        // y si tocaban "Cancelar" (pensando "sin nota") se abortaba el cambio
+        // entero: eso era el bug de "no me lo grababa".
+        const ok = await patchStatus(rec, nuevo, '');
+        if(ok){
+          rec.estado = nuevo;
+          openDetail(rec); // refresh modal
+          renderBoard();
+          renderKPIs();
+          showToast('Estado → ' + ESTADO_MAP[nuevo].short);
+        }
+      });
+    });
+    const saveNotasBtn = document.getElementById('dGuardarNotas');
+    if(saveNotasBtn){
+      saveNotasBtn.addEventListener('click', async ()=>{
+        const tec = document.getElementById('dTecnico').value.trim();
+        const notas = document.getElementById('dNotas').value;
+        const ok = await patchPassword(rec.id, { tecnicoAsignado: tec, notasInternas: notas });
+        if(ok){
+          rec.tecnicoAsignado = tec;
+          rec.notasInternas = notas;
+          renderBoard();
+          showToast('Notas guardadas ✓');
+        }
+      });
+    }
+    document.getElementById('dCopyLink').addEventListener('click', async (e)=>{
+      try{
+        await navigator.clipboard.writeText(customerLinkFor(rec));
+        e.target.textContent = 'Copiado ✓';
+        e.target.classList.add('copy-ok');
+        setTimeout(()=>{ e.target.textContent = 'Copiar'; e.target.classList.remove('copy-ok'); }, 2000);
+      }catch(err){ showToast('No se pudo copiar'); }
+    });
+    document.getElementById('dWhatsappLink').addEventListener('click', ()=>{
+      let phone = String((c.telefono || '')).trim();
+      if(!phone){
+        phone = prompt('No hay teléfono cargado. Ingresá el del cliente (con código de área, sin 0 ni 15):', '');
+        if(!phone) return;
+      }
+      const phoneE164 = toE164Argentina(phone);
+      if(!phoneE164){ showToast('Teléfono inválido'); return; }
+      const nombreCli = String(c.nombre || '').split(/\s+/)[0] || '';
+      const msg = 'Hola ' + nombreCli + '! Te comparto el link para que veas el estado de tu vehículo ' + (v.patente || '') + ':\n\n' + customerLinkFor(rec);
+      window.open('https://wa.me/' + phoneE164 + '?text=' + encodeURIComponent(msg), '_blank');
+    });
+
+    // Adjuntos posteriores (fotos + videos del auto en el taller)
+    renderAttachments(rec);
+    document.getElementById('btnAttPhoto').addEventListener('click', ()=>{
+      document.getElementById('input_attPhoto').value = '';
+      document.getElementById('input_attPhoto').click();
+    });
+    document.getElementById('btnAttVideo').addEventListener('click', ()=>{
+      document.getElementById('input_attVideo').value = '';
+      document.getElementById('input_attVideo').click();
+    });
+    document.getElementById('input_attPhoto').addEventListener('change', async (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      await handleAttachmentUpload(rec, file, 'photo');
+    });
+    document.getElementById('input_attVideo').addEventListener('change', async (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      try{
+        const dur = await getVideoDuration(file);
+        if(dur > 62){
+          const sec = Math.round(dur);
+          if(!confirm('El video dura ' + sec + ' segundos (máximo recomendado 60s).\n\nLos videos largos ocupan mucho espacio y son incómodos de mandar por WhatsApp.\n\n¿Subirlo igual?')) return;
+        }
+      }catch(err){ /* si no pudimos leer duración, seguimos */ }
+      await handleAttachmentUpload(rec, file, 'video');
+    });
+
+    overlay.classList.add('open');
+  }
+
+  // ---------- Adjuntos posteriores (mismos helpers que el panel de ingresos) ----------
+  function getVideoDuration(file){
+    return new Promise((resolve, reject) => {
+      const v = document.createElement('video');
+      v.preload = 'metadata';
+      v.onloadedmetadata = () => { const d = v.duration; URL.revokeObjectURL(v.src); resolve(d); };
+      v.onerror = () => { URL.revokeObjectURL(v.src); reject(new Error('No se pudo leer duración')); };
+      v.src = URL.createObjectURL(file);
+    });
+  }
+
+  function renderAttachments(rec){
+    const listEl = document.getElementById('attList');
+    if(!listEl) return;
+    const atts = Array.isArray(rec.attachments) ? rec.attachments.slice() : [];
+    atts.sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
+    if(atts.length === 0){
+      listEl.innerHTML = '<div class="att-empty">Sin fotos ni videos posteriores todavía. Agregá cuando encuentres un rayón nuevo o cuando termines una reparación para mostrársela al cliente.</div>';
+      return;
+    }
+    listEl.innerHTML = atts.map(att => {
+      const isVideo = att.kind === 'video' || /video/i.test(att.contentType || '');
+      const thumb = isVideo
+        ? '<video src="'+att.url+'" preload="metadata" muted playsinline></video><div class="att-play">' + uiIcon('play') + '</div>'
+        : '<img src="'+att.url+'" loading="lazy">';
+      const caption = att.caption
+        ? '<span class="att-caption">' + escapeHtml(att.caption) + '</span>'
+        : '<span class="att-caption empty">(sin descripción)</span>';
+      const date = att.createdAt ? new Date(att.createdAt).toLocaleString('es-AR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '';
+      const metaIcon = isVideo ? uiIcon('video','inline-icon') : uiIcon('photo','inline-icon');
+      return '<div class="att-item" data-att-id="'+att.id+'">' +
+        '<div class="att-thumb" data-url="'+att.url+'" data-kind="'+(isVideo?'video':'photo')+'">' + thumb + '</div>' +
+        '<div class="att-info">' +
+          caption +
+          '<div class="att-meta">' + metaIcon + ' ' + (isVideo?'video':'foto') + ' · ' + date + '</div>' +
+          '<div class="att-btns">' +
+            '<button type="button" class="att-caption-btn" data-att-id="'+att.id+'">' + uiIcon('edit','inline-icon') + ' Descripción</button>' +
+            '<button type="button" class="att-wa" data-att-id="'+att.id+'">' + uiIcon('whatsapp','inline-icon') + ' WhatsApp</button>' +
+            '<button type="button" class="att-del" data-att-id="'+att.id+'">' + uiIcon('trash','inline-icon') + '</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    listEl.querySelectorAll('.att-thumb').forEach(t => {
+      t.addEventListener('click', ()=>{
+        const url = t.dataset.url;
+        const kind = t.dataset.kind;
+        if(kind === 'video') window.open(url, '_blank');
+        else window.open(url, '_blank');
+      });
+    });
+    listEl.querySelectorAll('.att-caption-btn').forEach(btn => {
+      btn.addEventListener('click', ()=> editAttCaption(rec, btn.dataset.attId));
+    });
+    listEl.querySelectorAll('.att-wa').forEach(btn => {
+      btn.addEventListener('click', ()=> sendAttByWhatsapp(rec, btn.dataset.attId));
+    });
+    listEl.querySelectorAll('.att-del').forEach(btn => {
+      btn.addEventListener('click', ()=> deleteAttachment(rec, btn.dataset.attId));
+    });
+  }
+
+  async function editAttCaption(rec, attId){
+    if(!Array.isArray(rec.attachments)) return;
+    const att = rec.attachments.find(a => a.id === attId);
+    if(!att) return;
+    const nuevo = prompt('Descripción del adjunto (qué se ve, qué se cambió, etc.):', att.caption || '');
+    if(nuevo == null) return;
+    att.caption = nuevo.trim();
+    renderAttachments(rec);
+    try{
+      const res = await fetch(apiUrl(), {
+        method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify({ action:'patch', id: rec.id, patch: { attachments: rec.attachments } })
+      });
+      if(res.ok) showToast('Descripción guardada ✓');
+    }catch(err){ showToast('No se pudo guardar la descripción'); }
+  }
+
+  function sendAttByWhatsapp(rec, attId){
+    const att = (rec.attachments || []).find(a => a.id === attId);
+    if(!att){ showToast('Adjunto no encontrado'); return; }
+    let phone = String((rec.cliente && rec.cliente.telefono) || '').trim();
+    if(!phone){
+      phone = prompt('No hay teléfono cargado. Ingresá el número del cliente:', '');
+      if(!phone) return;
+    }
+    const phoneE164 = toE164Argentina(phone);
+    if(!phoneE164){ showToast('Teléfono inválido'); return; }
+    const nombreCli = String((rec.cliente && rec.cliente.nombre) || '').split(/\s+/)[0] || '';
+    const kindTxt = att.kind === 'video' ? 'un video' : 'una foto';
+    const msg = 'Hola ' + nombreCli + ', te compartimos ' + kindTxt + ' de tu vehículo ' + (rec.vehiculo.patente || '') + ':\n' + (att.caption ? '\n' + att.caption + '\n' : '') + '\n' + att.url;
+    window.open('https://wa.me/' + phoneE164 + '?text=' + encodeURIComponent(msg), '_blank');
+  }
+
+  async function deleteAttachment(rec, attId){
+    const att = (rec.attachments || []).find(a => a.id === attId);
+    if(!att){ showToast('Adjunto no encontrado'); return; }
+    const label = (att.kind === 'video' ? 'video' : 'foto') + (att.caption ? ' ("' + att.caption + '")' : '');
+    if(!confirm('¿Borrar ' + label + '? No se puede deshacer.')) return;
+    rec.attachments = (rec.attachments || []).filter(a => a.id !== attId);
+    renderAttachments(rec);
+    try{
+      await fetch(apiUrl(), {
+        method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify({ action:'patch', id: rec.id, patch: { attachments: rec.attachments } })
+      });
+      showToast('Adjunto borrado ✓');
+    }catch(err){ showToast('No se pudo actualizar'); }
+  }
+
+  async function handleAttachmentUpload(rec, file, kind){
+    const TOPE_BYTES = 25 * 1024 * 1024;
+    if(file.size > TOPE_BYTES){
+      showToast('El archivo pesa ' + (file.size/(1024*1024)).toFixed(1) + ' MB. El máximo es 25 MB.', 6000);
+      return;
+    }
+    const uploadingEl = document.getElementById('attUploading');
+    const uid = 'up-' + Date.now();
+    const sizeTxt = (file.size / (1024*1024)).toFixed(1) + ' MB';
+    uploadingEl.innerHTML += (
+      '<div class="att-uploading" id="' + uid + '">' +
+        '<div class="name">' + uiIcon(kind === 'video' ? 'video' : 'camera', 'inline-icon') + ' ' + escapeHtml(file.name) + ' <span class="pct">(' + sizeTxt + ')</span></div>' +
+        '<div class="att-progress"><div class="bar" data-bar="' + uid + '"></div></div>' +
+      '</div>'
+    );
+    const barEl = document.querySelector('[data-bar="' + uid + '"]');
+    let caption = '';
+    if(kind === 'video'){
+      caption = prompt('Descripción corta del video (ej: "Cambio de filtro", "Extremo con juego"):', '') || '';
+    } else {
+      caption = prompt('Descripción corta de la foto (ej: "Rayón detectado post-lavado", "Motor limpio"):', '') || '';
+    }
+    try{
+      const safeName = String(file.name || 'archivo').replace(/[^A-Za-z0-9._-]/g, '_').substring(0, 80);
+      if(barEl) barEl.style.width = '30%';
+      const dataUrl = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = () => no(new Error('No se pudo leer el archivo.')); fr.readAsDataURL(file); });
+      const respU = await fetch(apiUrl(), {
+        method:'POST', headers:{TXT},
+        body: JSON.stringify({ action:'upload', ticketId: rec.id, key: kind + '-' + Date.now(), dataUrl })
+      });
+      const pU = JSON.parse(await respU.text());
+      if(!pU.ok) throw new Error(pU.error || 'El servidor no aceptó el archivo.');
+      if(barEl) barEl.style.width = '100%';
+      const blob = { url: pU.url, pathname: 'attachments/' + rec.id + '/' + safeName };
+      const upEl = document.getElementById(uid);
+      if(upEl) upEl.remove();
+      if(!Array.isArray(rec.attachments)) rec.attachments = [];
+      rec.attachments.push({
+        id: 'att-local-' + Date.now(),
+        kind, url: blob.url, pathname: blob.pathname,
+        caption, contentType: file.type || '', size: file.size, createdAt: Date.now()
+      });
+      renderAttachments(rec);
+      setTimeout(() => { try { loadRecords(); } catch(e){} }, 4000);
+      showToast((kind === 'video' ? 'Video' : 'Foto') + ' agregado ✓');
+    }catch(err){
+      const upEl = document.getElementById(uid);
+      if(upEl) upEl.remove();
+      console.error('attachment upload error:', err);
+      showToast('No se pudo subir: ' + (err.message || err), 6000);
+    }
+  }
+
+  function colorForEstado(id){
+    return { ingresado:'#8CA0A5', diagnostico:'#5C9098', presupuestado:'#B48CE0',
+      aprobado:'#FB5A24', esperando_repuesto:'#E67E22',
+      reparacion:'#F0AD4E', control:'#5CB8C0', lavadero:'#4FC3F7',
+      listo:'#5CB85C', entregado:'#3a3f40' }[id] || '#666';
+  }
+
+  // ---------- Nota por cambio de estado ----------
+  // Cada vez que se cambia el estado ofrecemos escribir una nota corta que
+  // queda pegada a esa entrada del historial. Los estados que suelen tener
+  // detalle (lavadero, esperando repuesto) traen un placeholder útil.
+  function promptEstadoNota(nuevoEstado, rec){
+    const patente = (rec && rec.vehiculo && rec.vehiculo.patente) || '';
+    let placeholder = '';
+    let titulo = 'Nota (opcional) sobre este cambio de estado:';
+    switch(nuevoEstado){
+      case 'lavadero':
+        titulo = 'Enviando ' + patente + ' al lavadero.\n\nNota opcional (qué quedó en el auto, alfombras, rueda de auxilio, llavero, tapizados, etc.):';
+        placeholder = 'Ej: Alfombras + rueda de auxilio + llavero adicional';
+        break;
+      case 'esperando_repuesto':
+        titulo = patente + ' pasa a esperar repuesto.\n\nNota opcional (qué repuesto se pidió y a qué proveedor):';
+        placeholder = 'Ej: Amortiguador delantero der. — pedido a Citroën, 5 días';
+        break;
+      case 'presupuestado':
+        titulo = patente + ' pasa a presupuestado.\n\nNota opcional (monto, qué se presupuestó, quién lo aprobó, etc.):';
+        placeholder = 'Ej: $180.000 — kit distribución completo';
+        break;
+      case 'aprobado':
+        titulo = patente + ' aprobado.\n\nNota opcional (quién aprobó, condiciones, forma de pago, etc.):';
+        placeholder = 'Ej: OK del cliente por WhatsApp 22/9, paga al retirar';
+        break;
+      case 'listo':
+        titulo = patente + ' listo para entregar.\n\nNota opcional (fue avisado el cliente, cuándo, etc.):';
+        placeholder = 'Ej: Avisé por WhatsApp, dijo que retira mañana';
+        break;
+      case 'entregado':
+        titulo = patente + ' entregado.\n\nNota opcional (forma de pago, quién retiró, etc.):';
+        placeholder = 'Ej: Retiró la esposa, pagó en efectivo';
+        break;
+      default:
+        titulo = patente + ' → ' + ESTADO_MAP[nuevoEstado].label + '\n\nNota opcional:';
+    }
+    // prompt() en el navegador no soporta placeholder, así que lo ponemos en
+    // el título como "Ej: ...". Aceptar sin escribir = sin nota (string vacío).
+    const r = prompt(titulo, '');
+    if(r === null) return null; // cancelar
+    return String(r).trim();
+  }
+
+
+  // ---------- API ops ----------
+  async function patchStatus(rec, nuevoEstado, nota){
+    const patch = { estado: nuevoEstado };
+    if(nota) patch.estadoNota = nota;
+    return patchPassword(rec.id, patch);
+  }
+  async function patchPassword(id, patch){
+    const pass = getPass();
+    if(!pass){
+      showToast('Falta la clave del taller (modo lectura)');
+      refreshUnlockBtn();
+      return false;
+    }
+    try{
+      const res = await fetch(apiUrl(), {
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify({ action:'patch', id, patch, password: pass })
+      });
+      const j = await res.json();
+      if(!j.ok){
+        if(res.status === 403 || j.code === 403){
+          // La clave ya se verifica al desbloquear, así que un 403 acá
+          // significa que la clave del servidor cambió entre medio — caso
+          // raro, pero seguimos revirtiendo a modo lectura como salvaguarda.
+          clearPass(); refreshUnlockBtn();
+          showToast('Clave incorrecta — volviste a modo lectura', 3500);
+        } else {
+          showToast('Error: ' + (j.error || 'desconocido'), 3500);
+        }
+        return false;
+      }      // Acción exitosa en modo edición — renovamos la ventana de 15 min.
+      touchPass();
+      return true;
+    }catch(err){
+      showToast('Error de red: ' + (err.message || err), 3500);
+      return false;
+    }
+  }
+
+  function toE164Argentina(input){
+    let s = String(input || '').replace(/\D/g, '');
+    if(!s) return '';
+    if(s.startsWith('54')) return s;
+    if(s.startsWith('0')) s = s.substring(1);
+    if(s.length === 10 && s.charAt(2) !== '1') s = s.substring(0,3) + '15' + s.substring(3);
+    return '54' + '9' + s;
+  }
+
+  // ---------- vista estadísticas ----------
+  // Estado del filtro de rango. Por defecto: últimos 30 días.
+  const statsState = {
+    preset: 'last30',   // last7, last30, thisMonth, lastMonth, custom
+    from: null, to: null // custom range (ms timestamps)
+  };
+
+  document.getElementById('tabKanban').addEventListener('click', ()=> switchView('kanban'));
+  document.getElementById('tabStats').addEventListener('click', ()=> switchView('stats'));
+
+  function switchView(v){
+    document.getElementById('tabKanban').classList.toggle('active', v === 'kanban');
+    document.getElementById('tabStats').classList.toggle('active', v === 'stats');
+    document.getElementById('viewKanban').style.display = v === 'kanban' ? '' : 'none';
+    document.getElementById('viewStats').style.display = v === 'stats' ? '' : 'none';
+    if(v === 'stats') renderStats();
+  }
+
+  // Devuelve [fromTs, toTs] según el preset actual.
+  function computeRange(){
+    const now = new Date();
+    const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const endOfDay = d => startOfDay(d) + 86400000 - 1;
+    switch(statsState.preset){
+      case 'last7': {
+        const to = endOfDay(now);
+        const from = startOfDay(new Date(now.getTime() - 6 * 86400000));
+        return [from, to];
+      }
+      case 'thisMonth': {
+        const from = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+        return [from, endOfDay(now)];
+      }
+      case 'lastMonth': {
+        const from = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
+        const to = new Date(now.getFullYear(), now.getMonth(), 1).getTime() - 1;
+        return [from, to];
+      }
+      case 'custom':
+        return [statsState.from, statsState.to];
+      case 'last30':
+      default: {
+        const to = endOfDay(now);
+        const from = startOfDay(new Date(now.getTime() - 29 * 86400000));
+        return [from, to];
+      }
+    }
+  }
+
+  function labelRange(){
+    const [f, t] = computeRange();
+    if(!f || !t) return 'Sin rango';
+    const fmt = d => new Date(d).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'});
+    return fmt(f) + ' a ' + fmt(t);
+  }
+
+  function renderStats(){
+    const wrap = document.getElementById('statsContent');
+    const [fromTs, toTs] = computeRange();
+
+    // Contamos cuántas veces se ENTRÓ a cada estado dentro del rango.
+    // Un auto puede entrar 2 o más veces (ej. volver de lavadero a control).
+    // Cada entry del historial dentro del rango cuenta una vez.
+    const perEstado = {};
+    ESTADOS.forEach(e => perEstado[e.id] = { count:0, times: [] });
+    allRecords.forEach(r => {
+      const hist = r.estadoHistorial || [];
+      // También contamos el estado inicial 'ingresado' cuando fue creado —
+      // si el createdAt entra en rango.
+      const startTs = new Date(r.createdAt || 0).getTime();
+      if(startTs >= fromTs && startTs <= toTs){
+        // ingresado implicito
+        if(perEstado.ingresado){
+          perEstado.ingresado.count++;
+        }
+      }
+      hist.forEach((h, i) => {
+        if(h.at >= fromTs && h.at <= toTs){
+          if(perEstado[h.estado]){
+            perEstado[h.estado].count++;
+            // Tiempo que estuvo en el estado anterior (from → h.at)
+            // Buscamos hacia atrás el momento cuando entró al estado anterior.
+            let prevTs;
+            if(i === 0) prevTs = startTs;
+            else prevTs = hist[i-1].at;
+            const dur = h.at - prevTs;
+            const estAnt = i === 0 ? 'ingresado' : hist[i-1].estado;
+            if(perEstado[estAnt] && dur > 0){
+              perEstado[estAnt].times.push(dur);
+            }
+          }
+        }
+      });
+    });
+
+    // Auto totals
+    const activos = allRecords.filter(r => r.estado !== 'entregado').length;
+    const entregadosEnRango = allRecords.filter(r => {
+      const hist = r.estadoHistorial || [];
+      const ent = hist.filter(h => h.estado === 'entregado').pop();
+      return ent && ent.at >= fromTs && ent.at <= toTs;
+    }).length;
+    const ingresadosEnRango = allRecords.filter(r => {
+      const t = new Date(r.createdAt || 0).getTime();
+      return t >= fromTs && t <= toTs;
+    }).length;
+
+    // ---------- Sección lavadero ----------
+    // Autos que fueron a lavadero DENTRO del rango. Extraemos la entry del
+    // historial que cumpla, y calculamos duración en lavadero (si ya salió).
+    const lavaderoEntries = [];
+    allRecords.forEach(r => {
+      const hist = r.estadoHistorial || [];
+      hist.forEach((h, i) => {
+        if(h.estado !== 'lavadero') return;
+        if(h.at < fromTs || h.at > toTs) return;
+        const salidaEntry = hist[i+1]; // siguiente cambio de estado = salió del lavadero
+        const salidaTs = salidaEntry ? salidaEntry.at : (r.estado === 'lavadero' ? null : null);
+        lavaderoEntries.push({
+          rec: r, at: h.at, salidaAt: salidaTs, nota: h.nota || '',
+          stillIn: !salidaEntry && r.estado === 'lavadero'
+        });
+      });
+    });
+    // Más nuevo arriba
+    lavaderoEntries.sort((a, b) => b.at - a.at);
+
+    // Semanal para el gráfico del lavadero (últimas 6 semanas)
+    const weeks = buildWeeklyLavadero();
+
+    // ---------- Render ----------
+    wrap.innerHTML =
+      // Filtros
+      '<div class="stats-filters">' +
+        '<div class="field"><label>Rango</label>' +
+          '<div class="presets" id="statsPresets">' +
+            '<button data-p="last7" class="' + (statsState.preset==='last7'?'active':'') + '">Últimos 7 días</button>' +
+            '<button data-p="last30" class="' + (statsState.preset==='last30'?'active':'') + '">Últimos 30</button>' +
+            '<button data-p="thisMonth" class="' + (statsState.preset==='thisMonth'?'active':'') + '">Este mes</button>' +
+            '<button data-p="lastMonth" class="' + (statsState.preset==='lastMonth'?'active':'') + '">Mes anterior</button>' +
+          '</div>' +
+        '</div>' +
+        '<div style="flex-basis:100%; font-size:12.5px; color:var(--text-dim); font-family:Space Mono,monospace;">' + escapeHtml(labelRange()) + '</div>' +
+        '<button class="csv-btn" id="btnDownloadCsv">' + uiIcon('download','inline-icon') + ' Descargar Excel</button>' +
+      '</div>' +
+
+      // KPIs generales
+      '<div class="stats-summary">' +
+        statCard('En taller ahora', activos, 'no entregados', 'accent') +
+        statCard('Ingresos en el rango', ingresadosEnRango, 'autos nuevos', '') +
+        statCard('Entregas en el rango', entregadosEnRango, 'autos finalizados', '') +
+        statCard('Pasaron por lavadero', lavaderoEntries.length, 'en el rango', '') +
+      '</div>' +
+
+      // Tabla por estado
+      '<div class="section-label">Movimientos por estado</div>' +
+      '<div class="stats-table"><table>' +
+        '<thead><tr>' +
+          '<th>Estado</th>' +
+          '<th class="num">Veces que se entró</th>' +
+          '<th class="num">Tiempo promedio</th>' +
+          '<th class="num">Tiempo máximo</th>' +
+        '</tr></thead><tbody>' +
+        ESTADOS.map(e => {
+          const s = perEstado[e.id];
+          const times = s.times;
+          const avg = times.length ? formatDur(times.reduce((a,b)=>a+b,0) / times.length) : '—';
+          const max = times.length ? formatDur(Math.max(...times)) : '—';
+          return '<tr>' +
+            '<td><div class="estado-cell"><span class="dot" style="background:' + colorForEstado(e.id) + '"></span>' + escapeHtml(e.label) + '</div></td>' +
+            '<td class="num">' + s.count + '</td>' +
+            '<td class="num">' + avg + '</td>' +
+            '<td class="num">' + max + '</td>' +
+          '</tr>';
+        }).join('') +
+      '</tbody></table></div>' +
+
+      // Sección lavadero
+      '<div class="lavadero-section">' +
+        '<h3>' + uiIcon('shower','inline-icon') + ' Detalle de lavadero</h3>' +
+        '<div class="sub">Para saldar cuentas con el lavadero externo. Se lista cada auto que pasó por lavadero en el rango, con la fecha y la nota (qué quedó en el auto).</div>' +
+
+        (weeks.length ? (
+          '<div style="font-size:12.5px; color:var(--text-dim); margin-bottom:4px;">Autos que entraron al lavadero por semana (últimas 6):</div>' +
+          '<div class="weekly-chart"><div class="weekly-bars">' +
+            weeks.map(w => {
+              const max = Math.max(1, ...weeks.map(x=>x.count));
+              const h = (w.count / max) * 90 + 4;
+              return '<div class="weekly-bar" style="height:' + h + 'px" title="' + w.label + ': ' + w.count + '">' +
+                (w.count > 0 ? '<span class="count">' + w.count + '</span>' : '') +
+                '<span class="lbl">' + w.label + '</span>' +
+              '</div>';
+            }).join('') +
+          '</div></div>'
+        ) : '') +
+
+        '<div class="lavadero-list" style="margin-top:14px;">' +
+          (lavaderoEntries.length === 0
+            ? '<div class="empty-state">Sin autos en lavadero en este rango.</div>'
+            : lavaderoEntries.map(le => {
+                const v = le.rec.vehiculo || {}; const c = le.rec.cliente || {};
+                let dur = '';
+                if(le.stillIn){
+                  dur = 'todavía en lavadero (' + Math.floor((Date.now() - le.at) / 86400000) + 'd)';
+                } else if(le.salidaAt){
+                  const d = Math.floor((le.salidaAt - le.at) / 86400000);
+                  dur = 'estuvo ' + d + 'd';
+                }
+                return '<div class="lavadero-item">' +
+                  '<span class="plate">' + escapeHtml(v.patente || '—') + '</span>' +
+                  '<div class="info">' +
+                    escapeHtml(((v.marca||'') + ' ' + (v.modelo||'')).trim() || '—') +
+                    '<div class="cli">' + escapeHtml(c.nombre || '') + '</div>' +
+                  '</div>' +
+                  '<div class="fecha">' +
+                    new Date(le.at).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'2-digit'}) +
+                    (dur ? '<br>' + dur : '') +
+                  '</div>' +
+                  (le.nota ? '<div class="nota">' + uiIcon('note','inline-icon') + ' ' + escapeHtml(le.nota) + '</div>' : '') +
+                '</div>';
+              }).join('')) +
+        '</div>' +
+      '</div>';
+
+    // Handlers de presets
+    wrap.querySelectorAll('#statsPresets button').forEach(b => {
+      b.addEventListener('click', ()=>{
+        statsState.preset = b.dataset.p;
+        renderStats();
+      });
+    });
+    // CSV download
+    document.getElementById('btnDownloadCsv').addEventListener('click', ()=>{
+      downloadStatsCsv(perEstado, lavaderoEntries);
+    });
+  }
+
+  function statCard(lbl, num, sub, cls){
+    return '<div class="stat-card">' +
+      '<div class="lbl">' + escapeHtml(lbl) + '</div>' +
+      '<div class="num ' + (cls||'') + '">' + escapeHtml(String(num)) + '</div>' +
+      '<div style="font-size:11.5px; color:var(--text-dim);">' + escapeHtml(sub) + '</div>' +
+    '</div>';
+  }
+
+  function formatDur(ms){
+    if(!ms) return '—';
+    const hours = ms / 3600000;
+    if(hours < 24) return hours.toFixed(1) + 'h';
+    return (hours / 24).toFixed(1) + 'd';
+  }
+
+  function buildWeeklyLavadero(){
+    // Últimas 6 semanas (calendario, lunes a domingo). Cuenta cuántas entradas a lavadero hubo por semana.
+    const weeks = [];
+    const now = new Date();
+    // Encuentro el lunes de esta semana
+    const dow = (now.getDay() + 6) % 7; // 0=lunes
+    const thisMon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow);
+    for(let w = 5; w >= 0; w--){
+      const monday = new Date(thisMon.getTime() - w * 7 * 86400000);
+      const nextMon = new Date(monday.getTime() + 7 * 86400000);
+      const count = allRecords.reduce((acc, r) => {
+        const hist = r.estadoHistorial || [];
+        hist.forEach(h => {
+          if(h.estado === 'lavadero' && h.at >= monday.getTime() && h.at < nextMon.getTime()) acc++;
+        });
+        return acc;
+      }, 0);
+      weeks.push({
+        label: monday.getDate() + '/' + (monday.getMonth() + 1),
+        count
+      });
+    }
+    return weeks;
+  }
+
+  function downloadStatsCsv(perEstado, lavaderoEntries){
+    // 2 secciones en un solo CSV: resumen por estado + detalle lavadero.
+    const lines = [];
+    lines.push('# Reporte Taller — ' + labelRange());
+    lines.push('# Generado: ' + new Date().toLocaleString('es-AR'));
+    lines.push('');
+    lines.push('## Resumen por estado');
+    lines.push('Estado,Veces que se entró,Tiempo promedio (h),Tiempo máximo (h)');
+    ESTADOS.forEach(e => {
+      const s = perEstado[e.id];
+      const times = s.times;
+      const avg = times.length ? (times.reduce((a,b)=>a+b,0) / times.length / 3600000).toFixed(1) : '';
+      const max = times.length ? (Math.max(...times) / 3600000).toFixed(1) : '';
+      lines.push([e.label, s.count, avg, max].map(csvCell).join(','));
+    });
+    lines.push('');
+    lines.push('## Detalle lavadero');
+    lines.push('Patente,Cliente,Marca/Modelo,Fecha entrada,Fecha salida,Duración (días),Nota');
+    lavaderoEntries.forEach(le => {
+      const v = le.rec.vehiculo || {}; const c = le.rec.cliente || {};
+      const dur = le.salidaAt ? Math.floor((le.salidaAt - le.at) / 86400000) : (le.stillIn ? Math.floor((Date.now() - le.at) / 86400000) + ' (aún)' : '');
+      lines.push([
+        v.patente || '',
+        c.nombre || '',
+        ((v.marca||'') + ' ' + (v.modelo||'')).trim(),
+        new Date(le.at).toLocaleDateString('es-AR'),
+        le.salidaAt ? new Date(le.salidaAt).toLocaleDateString('es-AR') : '',
+        dur,
+        le.nota || ''
+      ].map(csvCell).join(','));
+    });
+    // Descarga
+    const bom = '﻿'; // para que Excel lo abra bien en Windows con acentos
+    const blob = new Blob([bom + lines.join('\n')], { type:'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = 'reporte-taller-' + new Date().toISOString().slice(0,10) + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  function csvCell(v){
+    const s = String(v == null ? '' : v);
+    if(s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  // ---------- refresh ----------
+  document.getElementById('btnRefresh').addEventListener('click', ()=>{
+    loadRecords();
+    showToast('Actualizado');
+  });
+
+
+  // ---------- flechas del tablero (navegar columnas sin arrastrar) ----------
+  // Se instala UNA sola vez: #board nunca se destruye (renderBoard solo
+  // reemplaza su innerHTML), así que no hace falta reinstalar esto por render.
+  (function(){
+    const boardEl = document.getElementById('board');
+    const btnL = document.getElementById('boardNavLeft');
+    const btnR = document.getElementById('boardNavRight');
+    if(!boardEl || !btnL || !btnR) return;
+
+    function colStep(){
+      const col = boardEl.querySelector('.col');
+      // Gap real leído del CSS — antes estaba hardcodeado en 14, pero en
+      // mobile el gap es otro (10 en la media query actual), así que las
+      // flechas se quedaban cortas o se pasaban de columna en el celular.
+      const styles = getComputedStyle(boardEl);
+      const gap = parseFloat(styles.columnGap || styles.gap) || 0;
+      return col ? (col.getBoundingClientRect().width + gap) : 280;
+    }
+
+    // Global porque renderBoard() la llama al terminar de reconstruir
+    // columnas (puede cambiar scrollWidth, así que hay que re-evaluar
+    // disabled ahí también, no solo en scroll/resize).
+    window.updateBoardNavState = function(){
+      const max = Math.max(0, boardEl.scrollWidth - boardEl.clientWidth);
+      btnL.disabled = boardEl.scrollLeft <= 2;
+      btnR.disabled = boardEl.scrollLeft >= max - 2;
+    };
+
+    btnL.addEventListener('click', ()=>{ boardEl.scrollBy({left: -colStep(), behavior:'smooth'}); });
+    btnR.addEventListener('click', ()=>{ boardEl.scrollBy({left: colStep(), behavior:'smooth'}); });
+    boardEl.addEventListener('scroll', updateBoardNavState, {passive:true});
+    window.addEventListener('resize', updateBoardNavState);
+    updateBoardNavState();
+  })();
+
+  // ---------- pan horizontal del tablero (agarrar fondo/encabezado y arrastrar) ----------
+  // Instalado UNA sola vez fuera de renderBoard() (el nodo #board persiste
+  // entre renders). El navegador YA tiene un scroll horizontal nativo
+  // excelente en #board (overflow-x:auto + -webkit-overflow-scrolling:touch),
+  // así que en touch (dedo en celular/tablet) no hacemos nada acá: dejamos
+  // que el scroll nativo del navegador se encargue solo, sin preventDefault
+  // ni pointer capture de por medio. Este bloque de JS solo agrega
+  // "arrastrar para scrollear" con mouse/lápiz (drag-to-scroll), algo que el
+  // navegador no da gratis con mouse. Si el gesto arranca sobre una .card (o
+  // un control de formulario) tampoco hacemos nada acá, eso lo maneja
+  // SortableJS (arrastrar fondo = navegar tablero, arrastrar ficha = cambiar
+  // estado — son cosas distintas).
+  (function(){
+    const board = document.getElementById('board');
+    if(!board) return;
+
+    let panning = false;
+    let pointerId = null;
+    let startX = 0, startY = 0;
+    let startScrollLeft = 0;
+    let horizontalDrag = false;
+
+    board.addEventListener('pointerdown', function(e){
+      if(e.target.closest('.card')) return;
+      if(e.target.closest('button, a, input, select, textarea, label')) return;
+      // Touch: no interceptamos nada, scroll horizontal 100% nativo.
+      if(e.pointerType === 'touch') return;
+      if(e.pointerType === 'mouse' && e.button !== 0) return;
+
+      panning = true;
+      pointerId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      startScrollLeft = board.scrollLeft;
+      horizontalDrag = false;
+      try{ board.setPointerCapture(pointerId); }catch(err){}
+    });
+
+    board.addEventListener('pointermove', function(e){
+      if(!panning) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      if(!horizontalDrag){
+        // Zona muerta: un toque/click chiquito no debe iniciar pan.
+        if(Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        // Gesto más vertical que horizontal → es un scroll de página normal,
+        // no tocamos nada (soltamos el pan sin más).
+        if(Math.abs(dy) > Math.abs(dx)){ stopPan(); return; }
+        horizontalDrag = true;
+        board.classList.add('board-panning');
+      }
+
+      board.scrollLeft = startScrollLeft - dx;
+      if(e.cancelable) e.preventDefault();
+    }, {passive:false});
+
+    function stopPan(){
+      if(!panning) return;
+      panning = false;
+      board.classList.remove('board-panning');
+      try{
+        if(pointerId !== null && board.hasPointerCapture(pointerId)){
+          board.releasePointerCapture(pointerId);
+        }
+      }catch(err){}
+      pointerId = null;
+      horizontalDrag = false;
+    }
+
+    board.addEventListener('pointerup', stopPan);
+    board.addEventListener('pointercancel', stopPan);
+    board.addEventListener('lostpointercapture', stopPan);
+  })();
+  // Auto-refresh cada 45s si la pestaña está visible
+  setInterval(()=>{
+    if(document.visibilityState === 'visible') loadRecords();
+  }, 45000);
+
+  // ---------- init ----------
+  refreshUnlockBtn();
+  loadRecords();
+
+})();
+</script>
+<?!= include('branding') ?>
+</body>
+</html>
