@@ -93,7 +93,7 @@
 
   /* Tabs modernos estilo Rider: 3 pills del mismo tamaño, con fondo suave
      cuando están activas y transición limpia. Antes cada tab tenía su
-     propio estilo (el <a href="<?!= apiUrl ?>?page=taller"> se veía distinto que los buttons)
+     propio estilo (el <a href="<?!= apiUrl ?>?page=taller" target="_top"> se veía distinto que los buttons)
      — ahora los 3 comparten TODO. */
   nav{display:flex; gap:6px; padding-bottom:10px;}
   nav .tab-btn{
@@ -653,7 +653,7 @@
   <nav>
     <button class="tab-btn active" data-view="new"><span class="ic">🚗</span><span>Nuevo ingreso</span></button>
     <button class="tab-btn" data-view="history"><span class="ic">📋</span><span>Historial</span></button>
-    <a class="tab-btn" href="<?!= apiUrl ?>?page=taller" style="text-decoration:none;" title="Panel de taller — kanban con estado de cada vehículo"><span class="ic">🔧</span><span>Taller</span></a>
+    <a class="tab-btn" href="<?!= apiUrl ?>?page=taller" target="_top" style="text-decoration:none;" title="Panel de taller — kanban con estado de cada vehículo"><span class="ic">🔧</span><span>Taller</span></a>
   </nav>
 </header>
 
@@ -1469,7 +1469,7 @@
   }
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      if(!btn.dataset.view) return; // "Taller" es un <a href="<?!= apiUrl ?>?page=taller"> real, no cambia de tab acá
+      if(!btn.dataset.view) return; // "Taller" es un <a href="<?!= apiUrl ?>?page=taller" target="_top"> real, no cambia de tab acá
       selectTab(btn.dataset.view);
     });
   });
