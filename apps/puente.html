@@ -1,0 +1,29 @@
+<script>
+// Puente para las páginas servidas desde Apps Script. Dentro de Apps Script las páginas
+// corren en un marco aislado y el navegador bloquea fetch() al /exec. Acá las llamadas
+// a la API pasan por google.script.run (que sí funciona) y la respuesta se entrega como
+// si fuera un fetch normal, así el resto de la app no cambia.
+(function () {
+  if (!(window.google && google.script && google.script.run)) return;
+  var base = window.APP_CONFIG && window.APP_CONFIG.API_URL;
+  if (!base) return;
+  var fetchOriginal = window.fetch;
+  window.fetch = function (url, opts) {
+    if (typeof url !== 'string' || url.indexOf(base) !== 0) return fetchOriginal.apply(this, arguments);
+    var query = url.slice(base.length);
+    var metodo = (opts && opts.method) || 'GET';
+    var cuerpo = (opts && opts.body) || '';
+    return new Promise(function (resolve, reject) {
+      google.script.run
+        .withSuccessHandler(function (texto) {
+          var status = 200;
+          try { var j = JSON.parse(texto); if (!j.ok) status = j.code || 500; } catch (e) { status = 500; }
+          resolve(new Response(texto, { status: status, headers: { 'Content-Type': 'application/json' } }));
+        })
+        .withFailureHandler(function (err) { reject(new TypeError((err && err.message) || 'Error de red')); })
+        .apiPuente(metodo, query, typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo));
+    });
+  };
+})();
+
+</script>
