@@ -20,6 +20,21 @@
     return texto;
   }
 
+  // Usa el logo del taller como ícono de la pestaña y de la pantalla de inicio (iPhone/Android).
+  function ponerIconos(url) {
+    if (!url) return;
+    ['icon', 'apple-touch-icon'].forEach(function (rel) {
+      var l = document.querySelector('link[rel="' + rel + '"]');
+      if (!l) {
+        l = document.createElement('link');
+        l.rel = rel;
+        document.head.appendChild(l);
+      }
+      l.href = url;
+      if (rel === 'icon') l.type = 'image/png';
+    });
+  }
+
   function aplicar(cfg) {
     var n = String(cfg.nombre || '').trim();
     var pares = [
@@ -39,6 +54,7 @@
     document.querySelectorAll('img.logo-app').forEach(function (img) {
       if (cfg.logoUrl) img.src = cfg.logoUrl; else img.style.display = 'none';
     });
+    ponerIconos(cfg.logoUrl);
     function recorrer(nodo) {
       if (nodo.nodeType === 3) {
         var t = nodo.nodeValue, nuevo = reemplazar(t, pares);
