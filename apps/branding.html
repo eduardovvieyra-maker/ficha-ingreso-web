@@ -145,12 +145,21 @@
     };
   }
 
+  // Botón "Datos del taller": va en el menú lateral, debajo de las demás pantallas.
+  // Si la página no tiene menú, queda como botón flotante abajo a la izquierda.
   function botonDatos(cfg) {
     var b = document.createElement('button');
-    b.textContent = 'Datos del taller';
-    b.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:900;padding:8px 12px;font-size:13px;border:1px solid #bbb;border-radius:8px;background:#fff;color:#333;opacity:.85';
+    b.type = 'button';
+    b.className = 'tab-btn';
+    b.innerHTML = '<span>Datos del taller</span>';
     b.onclick = function () { abrirFormulario(cfg, false); };
-    document.body.appendChild(b);
+    var menu = document.querySelector('.tab-btn');
+    if (menu && menu.parentNode) {
+      menu.parentNode.appendChild(b);
+    } else {
+      b.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:900;padding:8px 12px;font-size:13px;border:1px solid #bbb;border-radius:8px;background:#fff;color:#333;opacity:.85';
+      document.body.appendChild(b);
+    }
   }
 
   fetch(window.APP_CONFIG.API_URL + '?config=1', { cache: 'no-store' })
