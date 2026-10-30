@@ -15,6 +15,13 @@
     ['web', 'Web (opcional)', 'text']
   ];
 
+  // El logo se guarda con un link de Drive "uc?export=view&id=..."; para mostrarlo como imagen
+  // conviene el enlace directo de imagen de Google, que carga bien en iPhone y Android.
+  function urlImagen(url) {
+    var m = /[?&]id=([\w-]+)/.exec(url || '');
+    return m ? 'https://lh3.googleusercontent.com/d/' + m[1] : (url || '');
+  }
+
   function reemplazar(texto, pares) {
     for (var i = 0; i < pares.length; i++) texto = texto.split(pares[i][0]).join(pares[i][1]);
     return texto;
@@ -30,7 +37,7 @@
         l.rel = rel;
         document.head.appendChild(l);
       }
-      l.href = url;
+      l.href = urlImagen(url);
       if (rel === 'icon') l.type = 'image/png';
     });
   }
@@ -62,7 +69,7 @@
       caja.insertBefore(nuevoLogo, caja.firstChild);
     }
     document.querySelectorAll('img.logo-app').forEach(function (img) {
-      if (cfg.logoUrl) img.src = cfg.logoUrl; else img.style.display = 'none';
+      if (cfg.logoUrl) img.src = urlImagen(cfg.logoUrl); else img.style.display = 'none';
     });
     ponerIconos(cfg.logoUrl);
     function recorrer(nodo) {
