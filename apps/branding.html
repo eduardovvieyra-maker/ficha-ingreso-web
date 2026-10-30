@@ -51,6 +51,16 @@
     document.querySelectorAll('meta[name="apple-mobile-web-app-title"]').forEach(function (m) {
       m.content = reemplazar(m.content, pares);
     });
+    // Logo en el menú lateral (si la página no tiene menú, arriba de todo).
+    if (cfg.logoUrl && !document.querySelector('img.logo-app')) {
+      var menu = document.querySelector('.tab-btn');
+      var caja = menu && menu.parentNode ? menu.parentNode : document.body;
+      var nuevoLogo = document.createElement('img');
+      nuevoLogo.className = 'logo-app';
+      nuevoLogo.alt = 'Logo del taller';
+      nuevoLogo.style.cssText = 'display:block;max-width:150px;max-height:70px;margin:10px auto;object-fit:contain';
+      caja.insertBefore(nuevoLogo, caja.firstChild);
+    }
     document.querySelectorAll('img.logo-app').forEach(function (img) {
       if (cfg.logoUrl) img.src = cfg.logoUrl; else img.style.display = 'none';
     });
